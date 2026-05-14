@@ -1,0 +1,53 @@
+---
+name: brew
+description: "Design a coffee or tea recipe for XBloom Studio, push to cloud, and save to local history."
+---
+
+# Brew a Recipe
+
+Design a pour-over or tea recipe for the user's XBloom Studio machine.
+
+## Context
+
+Read the user's preferences and history first:
+
+!`cat ~/.xbloom/preferences.json 2>/dev/null || echo "No preferences saved yet."`
+
+!`cat ~/.xbloom/beans.json 2>/dev/null | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');const b=JSON.parse(d);console.log(b.map(x=>x.id+': '+x.name+' ('+x.origin+', '+x.roastLevel+')').join('\n'))" 2>/dev/null || echo "No beans saved yet."`
+
+!`cat ~/.xbloom/water.json 2>/dev/null || echo "No water profile saved."`
+
+!`cat ~/.xbloom/history.json 2>/dev/null | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');const h=JSON.parse(d).slice(-5);console.log(h.map(x=>x.recipeName+' ('+x.brewedAt.slice(0,10)+') rating:'+x.rating+' — '+x.feedback).join('\n'))" 2>/dev/null || echo "No history yet."`
+
+## Workflow
+
+1. Ask the user about their coffee/tea (or let them pick from their bean library)
+2. Consider their taste preferences and past feedback when designing the recipe
+3. Read `data/xbloom_brewing_knowledge_base.md` for XBloom-specific baselines (453-recipe dataset, Templates A–G, bloom params by process). Read `data/brewing-reference.md` for general brewing science when needed.
+4. **MANDATORY — complete this `<thinking>` block before writing any parameters:**
+   - **烘焙度与处理法**：明确当前豆子的烘焙度（极浅/浅/中浅/中/中深/深）和处理法（水洗/日晒/蜜处理/厌氧等），定位到知识库对应基准模板。
+   - **溶解率与排气状态**：评估豆子的萃取难度。极浅烘/高密度豆（如巴拿马瑰夏）质地坚硬，需要更高温度或更细研磨来提升萃取率；深烘/厌氧豆细胞结构疏松，极易过萃出杂味，需要降温、粗研磨、减少扰动。
+   - **逐项检验常用手法是否适用**：
+     - 震动（agitate）：只有 Bloom 后才震动（XBloom 官方标准）。主泡段是否需要额外震动？日晒/厌氧豆结构松散，主泡段震动会加速过萃，默认不加；水洗浅烘豆密度高，主泡段也不需要额外震动，靠 spiral pattern 已足够。
+     - 水温：是否适合用 93°C 以上？厌氧/中深烘豆不适合高温，应降至 88–91°C；极浅烘水洗高密度豆才适合 93–95°C。
+     - 注水段数与 pattern：豆子的风味目标是清晰花香还是厚重甜感？前者用 centered/circular 减少扰动，后者用 spiral 增加萃取。
+   - **只有完成上述推演后，才允许输出最终配方参数。**
+5. Present a recipe card with all parameters
+6. **配方命名规则（推荐标记）**：根据豆子特性判断热饮/冰饮的适合程度，在配方名称前加标记：
+   - `⭐️ 豆名 · 热饮` / `⭐️ 豆名 · 冰饮`：推荐饮用方式（风味在该温度下表现最佳）
+   - `🧊 豆名 · 冰饮`：冰饮专属推荐（如高酸果香型豆子冰饮更清爽）
+   - `⚠️ 豆名 · 热饮` / `⚠️ 豆名 · 冰饮`：不推荐（如深烘/厌氧豆冰饮容易出杂味，或浅烘高酸豆热饮酸感过于尖锐）
+   - 无标记：热饮冰饮均可，无明显偏好
+   - **判断依据**：浅烘花香/果酸型豆子冰饮通常更清透（⭐️冰饮）；日晒/蜜处理甜感型豆子热饮更能展现层次（⭐️热饮）；特殊发酵豆热饮香气更完整，冰饮可能损失发酵香（⚠️冰饮）。
+7. After approval, use the appropriate MCP tool:
+   - Coffee: `xbloom_create_recipe`
+   - Tea: `xbloom_create_tea_recipe`
+7. Save to history with `xbloom_save_history`
+
+## Auth Check
+
+!`test -f ~/.xbloom/config.json && echo "Logged in." || echo "NOT LOGGED IN — ask user for XBloom email/password and call xbloom_login first."`
+
+## User Input
+
+$ARGUMENTS

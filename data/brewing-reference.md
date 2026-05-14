@@ -400,39 +400,79 @@ Hedrick addresses the fines problem by using a **coarser grind combined with agg
 
 ## 4. Bean-Specific Brewing Adjustments
 
+> **Data source**: Statistics from 397 valid official XBloom recipes (2025 dataset). See `xbloom_brewing_knowledge_base.md` for full analysis and baseline templates.
+
 ### 4.1 By Roast Level
 
-| Variable | Light Roast | Medium Roast | Dark Roast |
-|----------|-------------|--------------|------------|
-| Temperature | 93-95°C (or boiling) | 90-93°C | 85-90°C |
-| Grind (XBloom scale) | 55-70 (fine-medium) | 70-85 (medium) | 85-100 (medium-coarse) |
-| Bloom time | 45-60s | 30-45s | 20-30s |
-| Bloom water | 3x dose | 2-3x dose | 2x dose |
-| Ratio | 1:16 to 1:17 | 1:15 to 1:16 | 1:14 to 1:16 |
-| Agitation | More (harder to extract) | Moderate | Less (extracts easily) |
-| Flow rate | 3.0 ml/s (slower) | 3.0-3.2 ml/s | 3.2-3.5 ml/s (faster) |
-| Pour count | 3-4 (more contact time) | 2-3 | 2-3 (less contact time) |
-| RPM | 60-75 (preserve aromatics) | 75-90 | 90-120 |
+*Calibrated from 397 official XBloom recipes.*
 
-**Why light roasts need more heat**: Dense cellular structure resists water penetration. Higher temperature = more kinetic energy to break down cell walls and extract solubles. Light roasts also retain more CO2.
+| Variable | Light (roast=1) | Medium-Light (roast=2) | Medium-Dark (roast=3) | Dark (roast=4/5) |
+|----------|----------------|----------------------|----------------------|-----------------|
+| Bloom temperature | 92–95°C | 91–94°C | 90–93°C | 89–92°C |
+| Overall temperature | ~92°C | ~91.6°C | ~91.5°C | ~90°C |
+| Grind (XBloom scale) | 46–70 (median 57) | 41–70 (median 59) | 45–70 (median 55) | 50–70 (median 59) |
+| Bloom water | 3.3–3.5x dose | 3.2x dose | 3.4x dose | 2.9–3.4x dose |
+| Bloom pause | 20–45s (avg 24s) | 15–35s (avg 24s) | 15–30s (avg 18s) | 20–30s (avg 22s) |
+| Ratio | 1:15–17 (avg 16.2) | 1:15–17 (avg 16.0) | 1:15–16 (avg 15.7) | 1:14–16 (avg 15.5) |
+| Pour count | 4–5 (mode 5) | 4–5 (mode 4) | 4–5 (mode 4) | 4–5 |
+| RPM | 60–120 (mode 120) | 120 (mode) | 120 (mode) | 120 |
 
-**Why dark roasts need less heat**: Porous, brittle structure. Solubles are already partially broken down by extended roasting. Over-extraction happens easily, producing char and bitterness.
+**Key insight**: Bloom water ratio is consistently 3.0–3.7x dose across all roast levels — significantly higher than traditional pour-over advice (2x). This is a defining characteristic of XBloom recipes.
 
 ### 4.2 By Process Method
 
-| Variable | Washed | Natural | Honey |
-|----------|--------|---------|-------|
-| Temperature | 95-98°C (higher) | 93-96°C (lower) | 93-96°C (moderate) |
-| Grind | Finer (higher uniformity) | Coarser (extracts faster, more fines) | Medium |
-| Ratio | 1:16 to 1:17 (more water for clarity) | 1:15 to 1:16 (less water, already sweet) | 1:15 to 1:16 |
-| Agitation | More agitation OK | Less agitation (brittle, produces fines) | Moderate |
-| Brew time | Up to 4 min | Can be as fast as 2 min | 2:30-3:30 |
-| Pour count | 3+ (more contact time for complex acidity) | 2-3 (fewer pours = less fines disruption) | 3 |
-| Flavor profile | Bright, clean, articulate acidity | Fruity, berry, wine-like, full body | Body of natural + brightness of washed |
+*Calibrated from 397 official XBloom recipes. Bloom parameters are the most process-sensitive variables.*
 
-**Natural process adjustments**: These beans are less dense and extract more quickly. They produce more fines when ground. Using fewer pours and less agitation prevents fines from clogging the filter and creating astringency. Slightly coarser grind compensates for easy extractability.
+| Variable | Washed | Natural | Honey | Special Fermented | Decaf |
+|----------|--------|---------|-------|-------------------|-------|
+| Bloom ratio | 3.3x | 3.5x | 3.7x | 3.4x | 2.8x |
+| Bloom pause | 25s | 23.5s | 26s | 26s | 22s |
+| Bloom temperature | 93.1°C | 93.1°C | 92.7°C | 92.5°C | 92.2°C |
+| Grind (median) | 55 | 58 | 55 | 57 | 57 |
+| Ratio | 1:16–17 | 1:16–17 | 1:16.5 | 1:16 | 1:16 |
+| Pour count | 4–5 | 4–5 | 5–6 | 4 | 4 |
+| RPM | 120 | 120 | 120 | 60–120 | 120 |
 
-**Washed process adjustments**: Clean, uniform cell structure allows for finer grinds and more aggressive extraction without muddiness.
+**Process-specific notes**:
+- **Washed**: Longer bloom pause (25s) for CO₂ release; spiral pattern common for light roast African washed
+- **Natural**: Higher bloom ratio (3.5x) to saturate fruit pectin layer; high temperature (93–95°C) to extract berry/tropical notes
+- **Honey**: Highest bloom ratio (3.7x) — pectin layer absorbs more water; most pours (5–6 segments)
+- **Special Fermented (Anaerobic/Co-ferment)**: Longest bloom pause (26s) for fermentation CO₂; some use low-temp bloom (80–85°C) + high-temp main pours as a "temperature jump" strategy
+- **Decaf**: Lowest bloom ratio (2.8x) and shortest pause (22s) — decaf processing loosens cell structure, less degassing needed
+
+### 4.3 By Bean Density / Altitude
+
+| Altitude | Density | Grind | Temp | Extraction behavior |
+|----------|---------|-------|------|---------------------|
+| 800-1200m (low) | Low density | Coarser | Lower (88-92°C) | Extracts easily, risk of over-extraction |
+| 1200-1600m (medium) | Medium | Medium | Medium (90-93°C) | Standard parameters |
+| 1600-2000m+ (high) | High density | Finer | Higher (93-95°C) | Resists extraction, needs more energy |
+
+- High-altitude beans (SHB/SHG) have tighter cellular structure, more sugars, more complexity
+- Dense beans require more force to grind = more uniform particle sizes = cleaner extraction
+- Low-density beans fracture more randomly = more fines = adjust coarser and use less agitation
+- Specialty coffee is typically grown at 1200m+ minimum
+
+### 4.4 By Bean Age / Freshness
+
+| Age | Bloom behavior | Grind adjustment | Other adjustments |
+|-----|---------------|------------------|-------------------|
+| 1-3 days (very fresh) | Explosive, uncontrollable | Coarser (+5-10 on scale) | Extended bloom (60s+), less agitation, higher ratio |
+| 4-7 days (fresh) | Strong dome | Slightly coarser (+3-5) | 45s bloom, standard recipe |
+| 7-21 days (peak) | Good dome, controllable | No adjustment needed | Standard recipe, peak flavor window |
+| 21-35 days (rested) | Moderate bloom | No adjustment or slightly finer | May need slightly finer grind |
+| 35-60 days (aging) | Weak bloom | Finer (-3-5 on scale) | Shorter bloom (25-30s), may need hotter water |
+| 60+ days (stale) | No bloom | Significantly finer (-5-10) | Shortest bloom (15-20s), highest temp, more agitation |
+
+**Resting period varies by roast level:**
+- Light roasts: optimal after 7-14 days rest
+- Medium roasts: optimal after 5-10 days rest
+- Dark roasts: ready after 2-5 days rest (more porous, faster degassing)
+
+### 4.5 Single Origin vs. Blend
+
+- **Single origins**: Can dial in precisely for the specific bean's characteristics. Push variables toward that origin's strengths.
+- **Blends**: Use middle-ground parameters. Ratio 1:16, medium grind, 91-93°C. The roaster has (ideally) balanced the blend for standard brewing. Avoid extremes of any variable.
 
 ### 4.3 By Bean Density / Altitude
 
@@ -611,21 +651,43 @@ Hedrick addresses the fines problem by using a **coarser grind combined with agg
 
 ## 8. Grind Size Guide (XBloom 40-120 scale)
 
+**Official XBloom grind zones:**
+| Range | Brew Method |
+|-------|-------------|
+| 1-15 | Espresso |
+| 16-30 | AeroPress |
+| 31-55 | Pour-over / drip |
+| 56-80 | French press / cold brew |
+
+**Pour-over range breakdown (31-55), derived from official XBloom recipes:**
+
 | Range | Description | Best For |
 |-------|-------------|----------|
-| 40-55 | Very fine | Not typical for pour-over (espresso-like). SEY ultra-high extraction method only. |
-| 55-70 | Fine-medium | Light roasts, dense beans, high extraction needed, washed process |
-| 70-85 | Medium | Most versatile, balanced extraction, medium roasts |
-| 85-100 | Medium-coarse | Dark roasts, naturally processed beans, Kasuya 4:6, osmotic flow |
-| 100-120 | Coarse | April brewer style, cold brew, very dark roasts |
+| 45-50 | Fine pour-over | Light roast natural/washed (埃塞日晒 50, 1:10冰咖啡 50), iced flash brew |
+| 50-55 | Medium-fine pour-over | Medium-light washed (曼特宁 55), honey process (哥斯达黎加 53), 1:17热饮 54 |
+| 55-61 | Medium pour-over | Anaerobic natural (哥伦比亚 60), washed Kenya (60), natural Geisha (61) |
+
+**Key observations from official recipes:**
+- All hot pour-over recipes: grind 45-61
+- Iced flash brew (1:12): grind 45; iced (1:10): grind 50 — finer to compensate for dilution
+- Natural Geisha uses coarsest grind (61) with lowest RPM (60) to preserve delicate aromatics
+- Mandheling (wet-hulled) uses 55 despite being a heavier roast — wet-hulled process behaves differently
 
 ## 9. Temperature Guide
 
-| Roast Level | Temperature Range | Why |
-|-------------|-------------------|-----|
-| Light | 93-95°C (some use boiling) | Dense beans need more heat energy to extract |
-| Medium | 90-93°C | Balanced extraction |
-| Dark | 85-90°C | Porous beans extract easily; lower temp prevents bitterness |
+**Official XBloom recipes show a distinct pattern: declining temperature across pours.**
+
+| Roast Level | Bloom Temp | Main Pours | Final Pour | Notes |
+|-------------|-----------|------------|------------|-------|
+| Light (washed) | 93-95°C | 91-95°C | 85-91°C | Kenya: drops to 85°C on last pour |
+| Light (natural) | 91-93°C | 90-93°C | 90-93°C | Gentler decline |
+| Light (natural Geisha) | 91°C | 93-95°C | 93°C | Starts low, rises mid-brew |
+| Medium-light (anaerobic) | 92°C | 88-91°C | 88°C | Steeper decline to avoid bitterness |
+| Medium (honey) | 93°C | 90-92°C | 90°C | Moderate decline |
+| Heavy (wet-hulled) | 92°C | 89-90°C | 89°C | Low throughout |
+| Iced flash brew | 71-93°C bloom | 82-90°C | 83-90°C | 1:12 uses 71°C bloom (low-temp bloom for sweetness) |
+
+**Key insight**: XBloom official recipes consistently use **declining temperature** — later pours are 2-8°C cooler than earlier pours. This differs from the traditional advice of keeping temperature constant.
 
 ## 10. Pour Patterns
 
@@ -635,14 +697,21 @@ Hedrick addresses the fines problem by using a **coarser grind combined with agg
 
 ## 11. Flow Rate (3.0-3.5 ml/s)
 
-- **3.0**: Gentler, more contact time, better for fine grinds and light roasts
-- **3.5**: Faster, less contact time, prevents over-extraction with coarser grinds
+**All official XBloom recipes use 3.5 ml/s exclusively.** The theoretical distinction between 3.0 and 3.5 is less relevant in practice — XBloom's machine design favors faster flow with finer grind to achieve target extraction, rather than slower flow with coarser grind.
+
+- **3.5**: Default for all XBloom official recipes (pour-over, iced, all roast levels)
 
 ## 12. Grinder RPM (60-120)
 
-- **60-75**: Less heat generation, preserves delicate aromatics. Best for light roasts.
-- **75-90**: Good all-rounder.
-- **90-120**: Faster grinding, fine for medium/dark roasts.
+**Official XBloom recipes show two distinct RPM strategies:**
+
+| RPM | When to use | Examples |
+|-----|-------------|---------|
+| 60 | Delicate light roasts, preserve aromatics | Natural Geisha (61 grind, 60 rpm) |
+| 80 | Medium-light, balanced | 1:10 iced (50 grind, 80 rpm) |
+| 120 | Most recipes — standard for XBloom | All other official recipes |
+
+**Key insight**: RPM 120 is the default for nearly all XBloom official recipes. Only the most delicate beans (natural Geisha) use 60 rpm. The previous guidance of "60-75 for light roasts" is not consistent with official recipes — light roast washed and natural coffees all use 120 rpm.
 
 ## 13. Extraction Science Quick Reference
 
@@ -682,6 +751,44 @@ Pour volumes must sum to approximately this total. The XBloom machine will flag 
 - Bloom: 45ml (19%) — 3x dose
 - Main: 110ml (46%)
 - Final: 85ml (35%)
+
+---
+
+## 15. XBloom Official Recipe Reference
+
+All parameters sourced directly from official XBloom share links.
+
+### 15.1 Hot Pour-Over Recipes
+
+| Recipe | Dose | Ratio | Grind | RPM | Bloom (vol/temp/pause) | Pour count | Temp range |
+|--------|------|-------|-------|-----|------------------------|------------|------------|
+| 1:17 5段式 (通用) | 15g | 1:17 | 54 | 120 | 60ml / 95°C / 40s | 5 | 95→94°C |
+| 埃塞俄比亚日晒 | 15g | 1:16 | 50 | 120 | 40ml / 93°C / 8s | 5 | 93→90°C |
+| 肯尼亚水洗 | 15g | 1:16 | 60 | 120 | 35ml / 93°C / 8s | 5 | 93→85°C |
+| 哥斯达黎加蜜处理 | 15g | 1:15 | 53 | 120 | 30ml / 93°C / 7s | 4 | 93→90°C |
+| 哥伦比亚厌氧日晒 | 15g | 1:16.5 | 60 | 120 | 35ml / 92°C / 8s | 4 | 92→88°C |
+| 印尼曼特宁湿抛 | 15g | 1:16 | 55 | 120 | 40ml / 92°C / 8s | 5 | 92→89°C |
+| 日晒瑰夏 | 18g | 1:16.5 | 61 | 60 | 60ml / 91°C / 31s | 5 | 91→93→93°C |
+
+### 15.2 Iced Flash Brew Recipes
+
+| Recipe | Dose | Ratio | Grind | RPM | Bloom (vol/temp/pause) | Pour count | Notes |
+|--------|------|-------|-------|-----|------------------------|------------|-------|
+| 1:12冰咖啡 5段式 | 15g | 1:12 | 45 | 120 | 36ml / 71°C / 40s | 5 | 低温bloom提甜感，全程circular |
+| 1:10冰咖啡 5段式 | 15g | 1:10 | 50 | 80 | 40ml / 93°C / 59s | 5 | 高浓度，温度快速下降 82-85°C |
+
+### 15.3 Key Patterns from Official Recipes
+
+1. **Flow rate**: Always 3.5 ml/s — no exceptions across all official recipes
+2. **Bloom agitation**: `agitate_after: true` on bloom pour in all recipes — the machine vibrates after bloom
+3. **Bloom volume**: 2x-4x dose (30-60ml for 15g dose), much smaller than traditional 3x rule
+4. **Bloom pause**: 7-40s — far shorter than traditional 30-60s; machine agitation compensates
+5. **Declining temperature**: Every recipe drops temperature across pours, typically 2-8°C total
+6. **Final pour pattern**: Often `centered` — gentlest pattern to avoid disturbing the bed at end
+7. **Pour count**: 4-5 pours is standard; 3-pour recipes are not used in official XBloom style
+8. **Iced flash brew grind**: 45-50 (finer than hot pour-over 50-61) to compensate for ice dilution
+9. **Iced bloom**: 1:12 recipe uses 71°C bloom — low-temp bloom extracts sweetness without bitterness before the hot pours
+10. **RPM 120 default**: Only natural Geisha uses rpm 60; all other official recipes use 120
 
 ## 15. Bean Origin Flavor Profiles
 

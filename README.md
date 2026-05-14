@@ -1,182 +1,78 @@
-# XBloom + Claude
+# xbloom-CoT-Brew
 
-Let Claude create custom coffee and tea recipes for your XBloom Studio machine. Just tell Claude about your coffee or tea — or snap a photo of the bag — and it designs a recipe that syncs straight to your xBloom app.
+基于 [xbloom-agent](https://github.com/denull0/xbloom-agent) 魔改，感谢原作者 [@denull0](https://github.com/denull0) 的开源工作。
 
-No coding needed. Works on Claude desktop, mobile, and web.
-
----
-
-## Get Started
-
-### Step 1: Connect to Claude
-
-Open Claude and add this server URL in your integrations settings:
-
-```
-https://ramaokxdyszcqpqxmosv.supabase.co/functions/v1/xbloom-mcp
-```
-
-**Where to find it:**
-- **Desktop app** — Settings > Integrations > Add
-- **iPhone / Android** — Settings > Integrations > Add
-- **claude.ai** — Profile > Settings > Integrations > Add
-
-Approve the connection when prompted.
-
-### Step 2: Sign in with your XBloom account
-
-The first time you use it, Claude will ask for your XBloom email and password. This links your XBloom account so recipes go directly to **your** app. Your password is used once and **never saved**.
-
-### Step 3: Start chatting
-
-Ask Claude to make you a recipe. Here are some ideas:
-
-**Coffee:**
-
-> *"Here's a photo of my coffee bag. Make me a recipe for it."*
-
-> *"I have a medium roast Colombian, 18g dose. I like it bright and clean."*
-
-> *"That last brew was a little bitter — can you adjust?"*
-
-**Tea:**
-
-> *"Create a tea recipe for my hojicha, 5g, two steeps."*
-
-> *"Make a green tea recipe — 3g sencha, 70°C, 60 second steep."*
-
-> *"I want an oolong recipe with three steeps, getting hotter each time."*
-
-**Manage:**
-
-> *"Show me all my recipes."*
-
-> *"Delete the old test recipe."*
-
-Recipes sync instantly to the **xBloom iOS app** and are ready to brew.
-
-### What can it do?
-
-- **Coffee recipes** — Pour-over recipes for the Omni dripper using brewing science (Kasuya 4:6, Hoffmann, Rao, etc.)
-- **Tea recipes** — Steep recipes for the Omni Tea Brewer with proper temperatures and steep times
-- **Photo-to-recipe** — Take a photo of your coffee or tea bag, Claude reads the label and creates a recipe
-- **Link-to-recipe** — Paste a product link, Claude pulls the details and designs a recipe
-- **Taste adjustments** — Tell Claude it was too bitter/sour/weak and it tweaks the recipe
-- **Manage recipes** — List, edit, and delete recipes right from the chat
-- **Import recipes** — Grab any shared XBloom recipe by URL
-
-### Privacy
-
-- Your password is **never stored** — it's used once to log in, then thrown away
-- Each user has their own account — nobody else can see or touch your recipes
-- Session tokens are encrypted at rest
+原项目提供了 Claude + MCP 驱动 XBloom Studio 的基础架构，本项目在此基础上引入了**数据驱动的 CoT（Chain-of-Thought）推演机制**：在输出任何冲煮参数之前，强制 Claude 先完成对豆子烘焙度、处理法、溶解率、水温适用性、振动策略的逐项推演，而不是直接套模板。
 
 ---
 
-## Developer Guide
+## 项目介绍
 
-Everything below is for developers who want to self-host or modify the server.
+xbloom-CoT-Brew 是一个运行在 Claude Code CLI 上的咖啡配方助手，通过本地 MCP Server 与 XBloom 云端 API 通信，将配方直接推送到你的 XBloom Studio App。
 
-### Tech Stack
+**核心改进：**
 
-- **Runtime**: Deno 2.x on Supabase Edge Functions
-- **Protocol**: MCP 2.0 (Streamable HTTP + SSE)
-- **Auth**: OAuth 2.0 + per-user XBloom login
-- **Encryption**: AES-256-CBC (sessions) + RSA (API payloads, XBloom's key)
+- **CoT 强制推演**：每次出配方前，Claude 必须先分析豆子特性（烘焙度/处理法/海拔/密度），评估萃取难度，逐项检验水温、振动、Pattern 是否适用，推演完成后才允许输出参数。杜绝"捷径依赖"——对所有豆子套用同一套模板。
+- **数据驱动知识库**：基于 453 条 XBloom 官方配方提炼的统计规律，包含 7 个豆子类型基准模板、处理法 → Bloom 参数映射、振动策略分析、Pattern 序列统计。
+- **配方推荐标记**：根据豆子特性自动判断热饮/冰饮适合程度，在配方名称前标注 ⭐️（推荐）或 ⚠️（不推荐）。
 
-### MCP Tools
+---
 
-| Tool | Description |
-|------|-------------|
-| `xbloom_login` | Authenticate with your XBloom account |
-| `xbloom_list_recipes` | List all your recipes with IDs |
-| `xbloom_create_recipe` | Create a coffee recipe (Omni dripper) |
-| `xbloom_create_tea_recipe` | Create a tea recipe (Omni Tea Brewer) |
-| `xbloom_edit_recipe` | Update an existing recipe by ID |
-| `xbloom_delete_recipe` | Permanently remove a recipe |
-| `xbloom_fetch_recipe` | Import a recipe from a share URL |
+## 登录
 
-### Self-Hosting
-
-#### Prerequisites
-
-- [Supabase CLI](https://supabase.com/docs/guides/cli/getting-started)
-- [Deno 2.x](https://deno.com)
-
-#### 1. Clone and deploy
-
-```bash
-git clone https://github.com/denull0/xbloom-agent.git
-cd xbloom-agent/xbloom-mcp-remote
-supabase functions deploy xbloom-mcp --no-verify-jwt
-```
-
-#### 2. Create the sessions table
-
-```sql
-CREATE TABLE user_sessions (
-  access_token TEXT PRIMARY KEY,
-  encrypted_creds TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
-```
-
-No environment variables needed — the server uses `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` which are automatically available in edge functions.
-
-#### 3. Connect Claude
-
-Add your server URL in Claude integrations:
+首次使用前需要登录 XBloom 账号，token 保存在本地 `~/.xbloom/config.json`（项目目录之外，不会进入 git）：
 
 ```
-https://<your-project>.supabase.co/functions/v1/xbloom-mcp
+帮我登录 XBloom，邮箱 xxx，密码 xxx
 ```
 
-### Recipe Parameters
+登录后 token 长期有效，无需重复登录。Session 过期时 Claude 会提示重新登录。
 
-**Coffee** (Omni dripper):
+---
 
-| Parameter | Range | Notes |
-|-----------|-------|-------|
-| `dose_g` | 1–31 | Coffee dose in grams |
-| `grind_size` | 40–120 | Lower = finer |
-| `grind_rpm` | 60–120 | Grinder speed |
-| `temperature_c` | 40–95 | Water temperature |
-| `flow_rate` | 3.0–3.5 | mL/s |
-| `pattern` | centered, circular, spiral | Pour pattern |
-| `pause_seconds` | 0–255 | Pause between pours |
+## 知识库
 
-**Tea** (Omni Tea Brewer):
+| 文件 | 用途 |
+|------|------|
+| `data/xbloom_brewing_knowledge_base.md` | **主知识库**。基于 453 条官方配方提炼的数据规律，包含 7 个豆子类型基准模板（Template A–G）、处理法 → Bloom 参数映射、振动策略分析、Pattern 序列统计。推演新配方时必读。 |
+| `data/brewing-reference.md` | 通用手冲科学参考（Kasuya、Hoffmann、Rao 等方法论）。作为主知识库的补充，用于理解萃取原理。 |
 
-| Parameter | Range | Notes |
-|-----------|-------|-------|
-| `dose_g` | 1–10 | Tea dose in grams |
-| `volume_ml` | 1–90 | Water per steep (machine adds ~30ml for siphon) |
-| `temperature_c` | 65–100 | Green: 70-80, White: 75-85, Oolong: 85-95, Black: 90-100 |
-| `steep_seconds` | 0–360 | Up to 6 minutes per steep |
-| `steeps` | 1–3 | Number of steeps |
+---
 
-### Project Structure
+## 加新豆子
+
+通过 `/beans` 命令添加豆子信息：
 
 ```
-xbloom-agent/
-├── xbloom-mcp-remote/
-│   └── supabase/
-│       ├── config.toml                     # Supabase project config
-│       └── functions/
-│           └── xbloom-mcp/index.ts         # MCP server (OAuth + tools + SSE)
-└── xbloom-recipes/
-    └── claude-project/
-        ├── custom-instructions.md          # Claude project instructions
-        └── xbloom-brewing-reference.md     # Coffee brewing science reference
+/beans 添加一款新豆：肯尼亚 Nyeri，水洗，浅烘，烘焙日期 2026-05-01
 ```
 
-### Security
+豆子信息保存在 `~/.xbloom/beans.json`，后续 `/brew` 时可直接从豆库选取。
 
-- Passwords are **never stored** — used once for XBloom API login, then discarded
-- Session tokens are **AES-256 encrypted** at rest using HMAC-SHA256 derived keys
-- Database table has **Row Level Security** — only the server can access it
-- Error messages are sanitized — no internal API details leaked
+---
+
+## 输出冲煮方案
+
+使用 `/brew` 命令：
+
+```
+/brew 帮我给这款豆子出一个热饮配方
+```
+
+**`/brew` 的执行流程：**
+
+1. 读取豆库、偏好、水质、历史记录
+2. 读取 `data/xbloom_brewing_knowledge_base.md`，定位对应基准模板
+3. 执行 CoT 推演：
+   - 烘焙度与处理法 → 定位基准模板
+   - 溶解率与排气状态评估
+   - 逐项检验水温、振动、Pattern 是否适用于当前豆子
+4. 输出配方卡片（含推荐标记），等待确认
+5. 确认后推送到 XBloom 云端，手机 App 下拉刷新即可使用
+
+**CoT 推演是强制步骤，不允许跳过直接套模板。**
+
+---
 
 ## License
 
