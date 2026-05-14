@@ -36,7 +36,8 @@ xbloom-CoT-Brew 是一个运行在 Claude Code CLI 上的咖啡配方助手，�
 |------|------|
 | `data/xbloom_brewing_knowledge_base.md` | **主知识库**。基于 453 条官方配方提炼的数据规律，包含 7 个豆子类型基准模板（Template A–G）、处理法 → Bloom 参数映射、振动策略分析、Pattern 序列统计。推演新配方时必读。 |
 | `data/brewing-reference.md` | 通用手冲科学参考（Kasuya、Hoffmann、Rao 等方法论）。作为主知识库的补充，用于理解萃取原理。 |
-| `data/recipes_v2.json` | **原始配方数据集**。453 条 XBloom 官方配方的完整原始数据，知识库的数据来源。供二次分析或研究使用。 |
+| `data/recipes_v2.json` | **原始配方数据集**。449 条 XBloom 官方配方的完整原始数据，知识库的数据来源。供二次分析或研究使用。 |
+| `data/recipes_readable.md` | **可读版配方数据集**。将原始 JSON 转换为人类可读的 Markdown，参数中文化（螺旋/环形/中心注水、段前/段后震动等），按产地分组并附目录索引，方便直接阅读参考。 |
 
 ---
 
