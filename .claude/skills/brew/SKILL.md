@@ -26,7 +26,8 @@ Read the user's preferences and history first:
 3. Read `data/xbloom_brewing_knowledge_base.md` for XBloom-specific baselines (453-recipe dataset, Templates A–G, bloom params by process). Read `data/brewing-reference.md` for general brewing science when needed.
 4. **MANDATORY — complete this `<thinking>` block before writing any parameters:**
    - **烘焙度与处理法**：明确当前豆子的烘焙度（极浅/浅/中浅/中/中深/深）和处理法（水洗/日晒/蜜处理/厌氧等），定位到知识库对应基准模板。
-   - **溶解率与排气状态**：评估豆子的萃取难度。极浅烘/高密度豆（如巴拿马瑰夏）质地坚硬，需要更高温度或更细研磨来提升萃取率；深烘/厌氧豆细胞结构疏松，极易过萃出杂味，需要降温、粗研磨、减少扰动。
+   - **溶解率与排气状态**：评估豆子的萃取难度。极浅烘/高密度豆（如巴拿马水洗瑰夏）质地坚硬，需要更高温度或更细研磨来提升萃取率；深烘/厌氧豆细胞结构疏松，极易过萃出杂味，需要降温、粗研磨、减少扰动。
+   - **⚠️ 瑰夏品种特别注意**：瑰夏不等于"高密度难萃取"！必须查看知识库 5.2.1 节，按产地×处理法区分。**埃塞日晒瑰夏萃取阈值极低（temp 88–91°C, grind 62–68），与巴拿马水洗瑰夏（temp 93–95°C, grind 50–57）参数截然相反。** 当瑰夏+日晒同时出现时，处理法影响 > 品种密度。
    - **逐项检验常用手法是否适用**：
      - 震动（agitate）：只有 Bloom 后才震动（XBloom 官方标准）。主泡段是否需要额外震动？日晒/厌氧豆结构松散，主泡段震动会加速过萃，默认不加；水洗浅烘豆密度高，主泡段也不需要额外震动，靠 spiral pattern 已足够。
      - 水温：是否适合用 93°C 以上？厌氧/中深烘豆不适合高温，应降至 88–91°C；极浅烘水洗高密度豆才适合 93–95°C。
