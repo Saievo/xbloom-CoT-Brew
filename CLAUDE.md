@@ -40,7 +40,25 @@ If `~/.xbloom/config.json` doesn't exist, ask for XBloom email/password and call
 | pause_seconds | 0-255 | Between pours |
 | cup_type | omni (coffee), omni tea brewer (tea) | |
 
-## Recipe Design Rules
+## Recipe Design Workflow（设计配方的标准行动模式）
+
+设计任何新配方时，必须按以下三步顺序执行，不可跳步：
+
+### Step 1：知识库推演
+根据豆子的烘焙度 × 处理法 × 产地，从 `data/xbloom_brewing_knowledge_base.md` 推演初始参数草稿。此步骤在内部完成，不直接输出给用户。
+
+### Step 2：对比已有配方
+调用 `xbloom_list_recipes` 获取账号中同类豆子的历史配方，与推演结果逐项对比：
+- ✅ 一致：无需修正，采用推演值
+- ⚠️ 差异：分析差异原因，判断是豆子不同导致的合理分歧，还是推演有误需要修正
+- 🆕 新思路：推演引入知识库新规律，说明依据
+
+**禁止纯概率论**：不能因为"多数配方用 X 所以用 X"，每个参数必须有豆子特性的实质理由。
+
+### Step 3：输出配方 + 对比摘要
+给出最终参数，并附简短说明：推演与已有配方的关键差异点是什么、如何处理的。
+
+
 
 - Total pour volumes must sum to approximately dose_g × ratio
 - Bloom: 2x-4x dose, pause 45-60s (light) / 30-45s (medium) / 20-30s (dark)
