@@ -180,13 +180,25 @@ export function registerTools(server: McpServer): void {
       altitude: z.string().optional(),
       flavorNotes: z.string().optional(),
       roastDate: z.string().optional(),
+      brewCount: z.number().int().min(0).optional().describe("Total brews recorded for this bean"),
+      lastBrewedAt: z.string().optional().describe("ISO timestamp of the most recent brew"),
+      lastRating: z.number().min(1).max(10).optional().describe("Rating (1-10) of the most recent brew"),
     },
     async (args) => {
       const beans = await store.getBeans();
-      const id = args.id || `bean_${Date.now()}`;
+      const { id: requestedId, ...fields } = args;
+      const id = requestedId || `bean_${Date.now()}`;
       const idx = beans.findIndex(b => b.id === id);
-      const bean: store.Bean = { ...args, id, addedAt: new Date().toISOString() };
-      if (idx >= 0) beans[idx] = bean;
+      const existing = idx >= 0 ? beans[idx] : null;
+      const { id: _existingId, ...existingFields } = existing ?? ({} as store.Bean);
+      // Preserve addedAt (and any fields not explicitly provided) on partial edits.
+      const bean: store.Bean = {
+        ...existingFields,
+        ...fields,
+        id,
+        addedAt: existing?.addedAt ?? new Date().toISOString(),
+      };
+      if (existing) beans[idx] = bean;
       else beans.push(bean);
       await store.saveBeans(beans);
       return { content: [{ type: "text", text: `Bean '${args.name}' saved (${id}).` }] };
@@ -222,12 +234,14 @@ export function registerTools(server: McpServer): void {
 
   server.tool(
     "xbloom_save_history",
-    "Save a brewing record with recipe params and optional feedback.",
+    "Save a brewing record, or update an existing record's feedback/rating (pass its id). Also auto-updates the referenced bean's brew stats.",
     {
+      id: z.string().optional().describe("Existing history entry id to update. Omit to create a new record."),
       beanId: z.string().optional(),
       beanName: z.string().optional(),
       recipeName: z.string(),
       recipeId: z.number().int().optional(),
+      brewedAt: z.string().optional().describe("ISO timestamp (only meaningful when creating or overriding)"),
       params: z.object({
         dose_g: z.number(),
         ratio: z.number(),
@@ -246,14 +260,43 @@ export function registerTools(server: McpServer): void {
     },
     async (args) => {
       const history = await store.getHistory();
-      const entry: store.HistoryEntry = {
-        id: `brew_${Date.now()}`,
-        ...args,
-        brewedAt: new Date().toISOString(),
-      };
-      history.push(entry);
+      const { id: entryId, brewedAt: brewedAtOverride, ...entryFields } = args;
+      const now = new Date().toISOString();
+      let entry: store.HistoryEntry;
+      let isNew = true;
+      if (entryId) {
+        const idx = history.findIndex(h => h.id === entryId);
+        if (idx >= 0) {
+          const existing = history[idx];
+          const { brewedAt: existingBrewedAt, ...existingRest } = existing;
+          entry = {
+            ...existingRest,
+            ...entryFields,
+            brewedAt: brewedAtOverride ?? existingBrewedAt,
+          };
+          history[idx] = entry;
+          isNew = false;
+        } else {
+          entry = { ...entryFields, id: entryId, brewedAt: brewedAtOverride ?? now };
+          history.push(entry);
+        }
+      } else {
+        entry = { ...entryFields, id: `brew_${Date.now()}`, brewedAt: now };
+        history.push(entry);
+      }
       await store.saveHistory(history);
-      return { content: [{ type: "text", text: `Brew recorded (${entry.id}).` }] };
+      let beanNote = "";
+      if (entry.beanId) {
+        const updated = await store.updateBeanStats(entry.beanId, {
+          brewedAt: entry.brewedAt,
+          rating: entry.rating,
+          increment: isNew,
+        });
+        if (updated) {
+          beanNote = ` Bean stats updated (${updated.brewCount ?? 0} brews, last rating ${updated.lastRating ?? "n/a"}).`;
+        }
+      }
+      return { content: [{ type: "text", text: `${isNew ? "Brew recorded" : "History entry updated"} (${entry.id}).${beanNote}` }] };
     },
   );
 

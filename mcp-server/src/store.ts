@@ -52,6 +52,12 @@ export interface Bean {
   altitude?: string;
   flavorNotes?: string;
   roastDate?: string;
+  /** How many brews have been recorded for this bean (auto-updated by save_history). */
+  brewCount?: number;
+  /** ISO timestamp of the most recent recorded brew. */
+  lastBrewedAt?: string;
+  /** Rating (1-10) of the most recent brew with a rating. */
+  lastRating?: number;
   addedAt: string;
 }
 
@@ -111,6 +117,28 @@ export async function getBeans(): Promise<Bean[]> {
 
 export async function saveBeans(beans: Bean[]): Promise<void> {
   await writeJson("beans.json", beans);
+}
+
+export interface BeanStatsUpdate {
+  brewedAt: string;
+  rating?: number;
+  /** Count a new brew (default true). Set false when only rating/feedback is updated. */
+  increment?: boolean;
+}
+
+export async function updateBeanStats(beanId: string, opts: BeanStatsUpdate): Promise<Bean | null> {
+  const beans = await getBeans();
+  const bean = beans.find((b) => b.id === beanId);
+  if (!bean) return null;
+  if (opts.increment !== false) {
+    bean.brewCount = (bean.brewCount ?? 0) + 1;
+  }
+  bean.lastBrewedAt = opts.brewedAt;
+  if (opts.rating !== undefined) {
+    bean.lastRating = opts.rating;
+  }
+  await saveBeans(beans);
+  return bean;
 }
 
 export async function getHistory(): Promise<HistoryEntry[]> {

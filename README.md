@@ -18,6 +18,37 @@ xbloom-CoT-Brew 是一个运行在 Claude Code CLI 上的咖啡配方助手，�
 
 ---
 
+## 运行环境：Hermes
+
+本项目已适配 [Hermes Agent](https://github.com/NousResearch/hermes-agent)（也兼容 Claude Code，AGENTS.md / CLAUDE.md 保持同步）。
+
+**迁移内容**：
+
+- Hermes project `xbloom` 挂载本仓库（主目录），自动读取 `AGENTS.md`
+- MCP server 已注册：`hermes mcp add xbloom --command node --args <仓库绝对路径>/mcp-server/dist/index.js`（16 个工具）
+- 技能通过 `~/.hermes/config.yaml` 的 `skills.external_dirs` 指向 `.agents/skills`（只读外链，仓库为唯一数据源）
+
+**新机器搭建**：
+
+```bash
+cd mcp-server && npm install && npm run build
+hermes mcp add xbloom --command node --args "$PWD/mcp-server/dist/index.js"
+```
+
+并在 `~/.hermes/config.yaml` 的 `skills` 段添加：
+
+```yaml
+skills:
+  external_dirs:
+    - /绝对路径/xbloom-agent/.agents/skills
+```
+
+本地数据（`~/.xbloom/`：config / beans / preferences / history / water）由 MCP 工具读写，跨平台共享。
+
+**反馈闭环**：每次推送配方后自动写入 `history.json` 并回写豆库统计（brewCount / lastBrewedAt / lastRating）；冲完用 `taste` 技能记录评分与反馈，后续配方优先复用同豆子的高分参数组合。
+
+---
+
 ## 登录
 
 首次使用前需要登录 XBloom 账号，token 保存在本地 `~/.xbloom/config.json`（项目目录之外，不会进入 git）：
