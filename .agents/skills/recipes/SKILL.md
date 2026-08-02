@@ -9,7 +9,7 @@ Manage recipes on the user's XBloom cloud account.
 
 ## Auth Check
 
-云端工具（`xbloom_list_recipes` / `xbloom_create_recipe` / `xbloom_edit_recipe` / `xbloom_delete_recipe`）报 "Not logged in" 时，询问用户 XBloom 邮箱和密码，调用 `xbloom_login` 后再重试。
+云端工具报错只要包含 "Not logged in"、"session expired"、"身份验证已过期"、"请重新登录" 等字样，立即停下：向用户索要 XBloom 邮箱和密码，调用 `xbloom_login` 登录成功后再重试原操作。
 
 ## Available Actions
 

@@ -138,7 +138,9 @@ export async function listRecipes(creds: XBloomCreds): Promise<string> {
   const payload = { ...authBase(creds), pageNumber: 1, countPerPage: 100, adaptedModel: 1 };
   const resp = await postEncrypted("tuMyTeaRecipeCreated.tuhtml", payload);
   if (resp.result !== "success") {
-    throw new Error("Failed to list recipes. Session may have expired — try logging in again.");
+    throw new Error(
+      `XBloom session expired or invalid — please call xbloom_login(email, password) to re-login. Detail: ${resp.info ?? "unknown"}`,
+    );
   }
   const recipes = (resp.list as Record<string, unknown>[]) || [];
   if (!recipes.length) return "No recipes found.";
@@ -187,7 +189,9 @@ export async function createRecipe(
   };
   const resp = await postEncrypted("tuRecipeAdd.tuhtml", payload);
   if (resp.result !== "success") {
-    throw new Error(`Failed to create recipe: ${resp.info ?? "unknown error"}`);
+    throw new Error(
+      `Failed to create recipe: ${resp.info ?? "unknown error"}. If the session expired, call xbloom_login(email, password) to re-login.`,
+    );
   }
   const shareId = btoa(String(resp.tableId));
   return `Recipe '${args.name}' created! ID: ${resp.tableId}\nShare: ${SHARE_BASE}/?id=${encodeURIComponent(shareId)}`;
@@ -230,7 +234,9 @@ export async function createTeaRecipe(
   };
   const resp = await postEncrypted("tuRecipeAdd.tuhtml", payload);
   if (resp.result !== "success") {
-    throw new Error("Failed to create tea recipe. Session may have expired.");
+    throw new Error(
+      `Failed to create tea recipe: ${resp.info ?? "unknown error"}. If the session expired, call xbloom_login(email, password) to re-login.`,
+    );
   }
   const shareId = btoa(String(resp.tableId));
   return `Tea recipe '${args.name}' created! ID: ${resp.tableId}\nShare: ${SHARE_BASE}/?id=${encodeURIComponent(shareId)}`;
@@ -289,7 +295,9 @@ export async function editRecipe(
 
   const resp = await postEncrypted("tuRecipeUpdate.tuhtml", payload);
   if (resp.result !== "success") {
-    throw new Error("Failed to update recipe. Session may have expired.");
+    throw new Error(
+      `Failed to update recipe: ${resp.info ?? "unknown error"}. If the session expired, call xbloom_login(email, password) to re-login.`,
+    );
   }
   return `Recipe [${args.recipe_id}] updated!`;
 }
@@ -297,7 +305,9 @@ export async function editRecipe(
 export async function deleteRecipe(creds: XBloomCreds, recipeId: number): Promise<string> {
   const resp = await postEncrypted("tuRecipeDelete.tuhtml", { ...authBase(creds), tableId: recipeId });
   if (resp.result !== "success") {
-    throw new Error("Failed to delete recipe. Session may have expired.");
+    throw new Error(
+      `Failed to delete recipe: ${resp.info ?? "unknown error"}. If the session expired, call xbloom_login(email, password) to re-login.`,
+    );
   }
   return `Recipe [${recipeId}] deleted.`;
 }
