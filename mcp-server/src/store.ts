@@ -52,6 +52,8 @@ export interface Bean {
   altitude?: string;
   flavorNotes?: string;
   roastDate?: string;
+  /** Roaster's reference grind, e.g. "C40 18" or "800um". Convert to Studio level via knowledge base §11. */
+  referenceGrind?: string;
   /** How many brews have been recorded for this bean (auto-updated by save_history). */
   brewCount?: number;
   /** ISO timestamp of the most recent recorded brew. */

@@ -37,7 +37,7 @@ export function registerTools(server: McpServer): void {
       name: z.string(),
       dose_g: z.number().min(1).max(31),
       ratio: z.number(),
-      grind_size: z.number().min(40).max(120),
+      grind_size: z.number().min(1).max(80).describe("XBloom Studio grind level 1-80, lower = finer (see knowledge base §11)"),
       grind_rpm: z.number().min(60).max(120),
       pours: z.array(z.object({
         volume_ml: z.number(),
@@ -87,7 +87,7 @@ export function registerTools(server: McpServer): void {
       name: z.string().optional(),
       dose_g: z.number().optional(),
       ratio: z.number().optional(),
-      grind_size: z.number().optional(),
+      grind_size: z.number().min(1).max(80).optional().describe("XBloom Studio grind level 1-80, lower = finer (see knowledge base §11)"),
       grind_rpm: z.number().optional(),
       pours: z.array(z.object({
         volume_ml: z.number(),
@@ -180,6 +180,7 @@ export function registerTools(server: McpServer): void {
       altitude: z.string().optional(),
       flavorNotes: z.string().optional(),
       roastDate: z.string().optional(),
+      referenceGrind: z.string().optional().describe("Roaster's reference grind, e.g. 'C40 18' or '800um'"),
       brewCount: z.number().int().min(0).optional().describe("Total brews recorded for this bean"),
       lastBrewedAt: z.string().optional().describe("ISO timestamp of the most recent brew"),
       lastRating: z.number().min(1).max(10).optional().describe("Rating (1-10) of the most recent brew"),

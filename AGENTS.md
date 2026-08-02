@@ -39,13 +39,13 @@ Always read preferences and history before designing a recipe. Use past feedback
 
 ## First-Time Setup
 
-If `~/.xbloom/config.json` doesn't exist, ask for XBloom email/password and call `xbloom_login`.
+If `~/.xbloom/config.json` doesn't exist — or any cloud tool reports "Not logged in" / "session expired" / "身份验证已过期" / "请重新登录" — stop and ask the user for their XBloom email/password, call `xbloom_login`, then retry.
 
 ## XBloom Hardware Parameters
 
 | Parameter | Range | Notes |
 |-----------|-------|-------|
-| grind_size | 40-120 | Lower = finer |
+| grind_size | 1-80 | Lower = finer（Studio 档位，刻度换算见知识库第十一节） |
 | grind_rpm | 60-120 | Grinder speed |
 | dose_g | 1-31 (coffee), 1-10 (tea) | |
 | temperature_c | 40-95 (coffee), 65-100 (tea) | |
@@ -59,7 +59,7 @@ If `~/.xbloom/config.json` doesn't exist, ask for XBloom email/password and call
 设计任何新配方时，必须按以下三步顺序执行，不可跳步：
 
 ### Step 1：知识库推演
-根据豆子的烘焙度 × 处理法 × 产地，从 `data/xbloom_brewing_knowledge_base.md` 推演初始参数草稿。此步骤在内部完成，不直接输出给用户。
+根据豆子的烘焙度 × 处理法 × 产地，从 `data/xbloom_brewing_knowledge_base.md` 推演初始参数草稿。若豆子带参考研磨度（`referenceGrind` / 用户提供的 C40、初代刻度、颗粒大小），先用知识库第十一节对照表换算成 Studio 档位作为研磨度基准。此步骤在内部完成，不直接输出给用户。
 
 ### Step 2：对比已有配方
 调用 `xbloom_list_recipes` 获取账号中同类豆子的历史配方，与推演结果逐项对比：

@@ -10,7 +10,7 @@ Design a pour-over or tea recipe for the user's XBloom Studio machine.
 ## Context（开始前必读，按顺序加载）
 
 1. `xbloom_get_preferences` — 口味偏好（不存在时先初始化中性默认值）
-2. `xbloom_get_beans` — 豆库，选定当前豆子
+2. `xbloom_get_beans` — 豆库，选定当前豆子；注意 `referenceGrind` 字段（如 "C40 18"、"800um"）
 3. `xbloom_get_water` — 水质（没有则跳过）
 4. `xbloom_get_history`（limit 5）— 最近冲煮记录与反馈
 5. **豆龄检查**：按选定豆子的 `roastDate` 计算豆龄（窗口见 beans 技能），超出最佳窗口必须提示用户并做参数补偿
@@ -20,7 +20,7 @@ Design a pour-over or tea recipe for the user's XBloom Studio machine.
 1. 询问用户想冲的咖啡/茶（或从豆库选择），确认饮用方式（热饮/冰饮）
 2. 结合口味偏好与历史反馈确定设计目标
 3. 阅读 `data/xbloom_brewing_knowledge_base.md` 定位基准模板（453 条数据、Template A–G、处理法→闷蒸、振动、pattern 规律）；必要时阅读 `data/brewing-reference.md`
-4. **MANDATORY — 知识库推演（先于一切参数输出）**：根据知识库基准模板，推演出初始参数草稿（研磨度、水温、比例、段数、pattern、震动）。此步骤只做推演，不输出给用户。
+4. **MANDATORY — 知识库推演（先于一切参数输出）**：根据知识库基准模板，推演出初始参数草稿（研磨度、水温、比例、段数、pattern、震动）。**研磨度基准**：若豆子带参考研磨度（`referenceGrind` 或用户提供 C40/初代刻度/颗粒 um），先按知识库**第十一节对照表**换算成 Studio 档位作为基准，再按烘焙度修正。此步骤只做推演，不输出给用户。
 5. **MANDATORY — 对比已有配方（推演完成后必做）**：调用 `xbloom_list_recipes` 获取账号中同类豆子的历史配方（相同/相近产地、处理法、烘焙度）。对比维度：
    - 找出推演参数与已有配方的差异点
    - 判断差异是合理分歧（豆子特性不同、设计目标不同）还是推演有误需要修正
@@ -28,6 +28,7 @@ Design a pour-over or tea recipe for the user's XBloom Studio machine.
    - 对比结论分三类：✅ 推演与已有配方一致，无需修正 / ⚠️ 存在差异，给出具体建议 / 🆕 推演引入新思路，说明理由
 6. **MANDATORY — 推演检验（输出参数前完成 `<thinking>` 检查）**：
    - **烘焙度与处理法**：明确当前豆子的烘焙度（极浅/浅/中浅/中/中深/深）和处理法（水洗/日晒/蜜处理/厌氧等），定位到知识库对应基准模板
+   - **研磨度基准**：是否已用参考研磨度（C40/初代/um）按第十一节对照表换算成 Studio 档位？换算结果与 1.2 节烘焙度规律不一致时，说明取舍理由（参考研磨度来自烘焙商建议，优先作为基准；知识库规律用于微调方向）
    - **溶解率与排气状态**：评估萃取难度。极浅烘/高密度豆（如巴拿马水洗瑰夏）质地坚硬，需要更高温度或更细研磨；深烘/厌氧豆细胞结构疏松，极易过萃出杂味，需要降温、粗研磨、减少扰动
    - **⚠️ 瑰夏品种特别注意**：瑰夏 ≠ 高密度难萃取！必须按产地×处理法区分。**埃塞日晒瑰夏萃取阈值极低（temp 88–91°C, grind 62–68），与巴拿马水洗瑰夏（temp 93–95°C, grind 50–57）参数截然相反。** 当瑰夏+日晒同时出现时，处理法影响 > 品种密度
    - **豆龄修正**：超出最佳窗口的豆子按豆龄补偿（21-35 天微调；35-60 天研磨调细 3-5 格、闷蒸缩短到 25-30s、水温提高；60+ 天明确提示风味流失）
@@ -51,4 +52,4 @@ Design a pour-over or tea recipe for the user's XBloom Studio machine.
 
 ## Auth
 
-云端工具报 "Not logged in" 时，询问用户 XBloom 邮箱和密码，调用 `xbloom_login` 后再重试。
+云端工具报错只要包含 "Not logged in"、"session expired"、"身份验证已过期"、"请重新登录" 等字样，立即停下：向用户索要 XBloom 邮箱和密码，调用 `xbloom_login` 登录成功后再重试原操作。

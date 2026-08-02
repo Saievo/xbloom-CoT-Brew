@@ -28,10 +28,16 @@ Call `xbloom_get_beans` to list all beans (id, name, origin, process, roast leve
 
 - **Add**: Collect bean info and call `xbloom_save_bean`
   - Required: name, origin, process (washed/natural/honey/anaerobic/special_fermented), roast level
-  - Optional: altitude, flavor notes, roast date
+  - Optional: altitude, flavor notes, roast date, **referenceGrind**（烘焙商给出的参考研磨度，如 "C40 18" 或 "800um"）
 - **Edit**: Call `xbloom_save_bean` with existing `id` and only the fields to change（未传字段保留原值）
 - **Remove**: Call `xbloom_delete_bean` with the bean id
 - **Photo**: If user provides a photo of a coffee bag, read the label and extract bean info
+
+## Reference Grind（参考研磨度）
+
+- 烘焙商/包装上给了参考研磨度时（常见 C40 刻度，也可能是初代刻度或颗粒大小 um），记录到 `referenceGrind` 字段
+- 出配方时 brew 技能会按知识库第十一节对照表把它换算成 Studio 档位作为研磨度基准
+- 用户之后提供更正时，用 `xbloom_save_bean` 更新该字段
 
 ## Brew Stats
 
