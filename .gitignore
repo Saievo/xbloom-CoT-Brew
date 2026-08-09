@@ -4,4 +4,5 @@
 **/.temp/
 node_modules/
 mcp-server/dist/
+web/dist/
 .mcp.json

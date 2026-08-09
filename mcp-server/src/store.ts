@@ -35,12 +35,35 @@ export interface XBloomConfig {
 }
 
 export interface Preferences {
-  acidity: string;
-  sweetness: string;
-  body: string;
-  strength: string;
-  notes: string;
-  updatedAt: string;
+  /** Desired direction: "sour" | "balanced" | "bitter" */
+  sourBitterBias?: string;
+  /** Desired strength: "light" | "medium" | "strong" */
+  strength?: string;
+  /** Desired body: "light" (清爽) | "medium" (适中) | "heavy" (厚重) */
+  bodyPref?: string;
+  /** How much aroma matters: "low" | "medium" | "high" */
+  aromaPriority?: string;
+  notes?: string;
+  updatedAt?: string;
+  // --- legacy fields (pre-2026-08) ---
+  acidity?: string;
+  sweetness?: string;
+  body?: string;
+}
+
+/** Map the legacy 4-dimension preference shape onto the new model. */
+export function normalizePreferences(raw: Preferences | Record<string, unknown> | null | undefined): Preferences {
+  if (!raw) return {};
+  const legacy = raw as unknown as Record<string, string>;
+  const out: Preferences = {
+    sourBitterBias: legacy.sourBitterBias ?? (legacy.acidity === "bright" ? "sour" : legacy.acidity === "low" ? "bitter" : "balanced"),
+    strength: legacy.strength ?? "medium",
+    bodyPref: legacy.bodyPref ?? (legacy.body === "full" ? "heavy" : legacy.body === "light" ? "light" : "medium"),
+    aromaPriority: legacy.aromaPriority ?? "medium",
+    notes: legacy.notes,
+    updatedAt: legacy.updatedAt ?? new Date().toISOString(),
+  };
+  return out;
 }
 
 export interface Bean {
@@ -49,18 +72,54 @@ export interface Bean {
   origin: string;
   process: string;
   roastLevel: string;
+  /** Coffee variety/cultivar, e.g. 瑰夏, SL28, 铁皮卡. */
+  variety?: string;
+  /** Package weight in grams (e.g. 250g bag). */
+  packageWeightG?: number;
+  /** Remaining grams in the current bag (auto-decremented per brew; reset by 开新袋). */
+  remainingG?: number;
+  /** True when the current bag is finished (喝完了). Cleared by 开新袋. */
+  finished?: boolean;
   altitude?: string;
   flavorNotes?: string;
   roastDate?: string;
+  /** Optional: date the package was opened (YYYY/MM/DD). Drives open-aging track. */
+  openedDate?: string;
   /** Roaster's reference grind, e.g. "C40 18" or "800um". Convert to Studio level via knowledge base §11. */
   referenceGrind?: string;
   /** How many brews have been recorded for this bean (auto-updated by save_history). */
   brewCount?: number;
   /** ISO timestamp of the most recent recorded brew. */
   lastBrewedAt?: string;
-  /** Rating (1-10) of the most recent brew with a rating. */
+  /** Rating (1-5) of the most recent brew with a rating. */
   lastRating?: number;
+  /** True when the bean was auto-created from a cloud recipe name (可删除的后悔药). */
+  auto?: boolean;
   addedAt: string;
+}
+
+/** Structured feedback (one cup). All dimensions are optional — skip what you can't taste. */
+export interface Feedback {
+  /** Overall cup score 1-5. */
+  rating?: number;
+  /** 酸: "weak" | "ok" | "strong" */
+  acidity?: string;
+  /** 涩: "weak" | "ok" | "strong" */
+  astringency?: string;
+  /** 苦: "weak" | "ok" | "strong" */
+  bitterness?: string;
+  /** body 口感: "light"(清爽) | "medium"(适中) | "heavy"(厚重) */
+  body?: string;
+  /** 香气: "none"(没闻到) | "light"(淡) | "strong"(明显) */
+  aroma?: string;
+  /** Optional aroma type, e.g. 花香/果香/坚果/焦糖/发酵酒香. */
+  aromaType?: string;
+  /** 卡粉 (stalled/clogged brew): true when flagged. */
+  stalled?: boolean;
+  /** Optional free-text note. */
+  note?: string;
+  /** User asked for parameter iteration suggestions. */
+  wantIteration?: boolean;
 }
 
 export interface HistoryEntry {
@@ -80,9 +139,21 @@ export interface HistoryEntry {
       pattern: string;
       flow_rate: number;
       pause_seconds: number;
+      agitate_before?: boolean;
+      agitate_after?: boolean;
     }>;
   };
+  /** Where the record came from: cloud sync or manual entry. */
+  source?: "cloud" | "manual";
+  /** Cloud record id when source is cloud (dedupe key). */
+  cloudRecordId?: number;
+  /** Recipe version snapshot (web loop state). */
+  version?: number;
+  /** Structured one-cup feedback. */
+  taste?: Feedback;
+  /** Legacy free-text feedback (kept for compatibility). */
   feedback?: string;
+  /** Legacy rating 1-10 (kept for compatibility; new entries use taste.rating 1-5). */
   rating?: number;
   brewedAt: string;
 }

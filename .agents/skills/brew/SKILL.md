@@ -10,10 +10,10 @@ Design a pour-over or tea recipe for the user's XBloom Studio machine.
 ## Context（开始前必读，按顺序加载）
 
 1. `xbloom_get_preferences` — 口味偏好（不存在时先初始化中性默认值）
-2. `xbloom_get_beans` — 豆库，选定当前豆子；注意 `referenceGrind` 字段（如 "C40 18"、"800um"）
+2. `xbloom_get_beans` — 豆库，选定当前豆子；注意 `referenceGrind` 字段（如 "C40 18"、"800um"）和 `openedDate`（开封日期，选填）
 3. `xbloom_get_water` — 水质（没有则跳过）
 4. `xbloom_get_history`（limit 5）— 最近冲煮记录与反馈
-5. **豆龄检查**：按选定豆子的 `roastDate` 计算豆龄（窗口见 beans 技能），超出最佳窗口必须提示用户并做参数补偿
+5. **豆龄检查**：双轨计算——按 `roastDate` 的烘焙窗口（见 beans 技能）+ `openedDate` 的开封衰减（开封 7-10 天起香气优先衰减，提示尽快饮用并微调；没有则退回纯烘焙规则；氮气单独包装豆开封衰减权重低）。超出窗口必须提示用户并做参数补偿
 
 ## Workflow
 
@@ -48,7 +48,9 @@ Design a pour-over or tea recipe for the user's XBloom Studio machine.
    - 推荐标记：`⭐️ 豆名 · 热饮/冰饮`（推荐）、`🧊 豆名 · 冰饮`（冰饮专属推荐）、`⚠️ 豆名 · 热饮/冰饮`（不推荐）
    - 判断依据：浅烘花香/果酸型→冰饮更清透；日晒/蜜处理甜感型→热饮层次更完整；特殊发酵豆→热饮香气更完整，冰饮可能损失发酵香
 8. 用户确认后调用 `xbloom_create_recipe`（咖啡）或 `xbloom_create_tea_recipe`（茶）
+   - **命名必须遵守**：`豆名 + 风味/版本后缀`（如 `锦绣·耶加雪菲 v3`），云端记录靠配方名/ID 回挂豆子
 9. **MANDATORY — 记录历史**：调用 `xbloom_save_history` 写入完整记录（beanId、recipeName、recipeId、全部 params），豆库统计自动回写；随后告诉用户："冲完告诉我这杯怎么样，我来记录评分并优化下次配方"
+   - 冲泡记录也会由 Web 端同步云端"最近使用"自动进入待反馈队列；用户可以在 Web 上 30 秒完成反馈，也可以在对话里口述（taste 技能按同样维度记录）
 
 ## Auth
 

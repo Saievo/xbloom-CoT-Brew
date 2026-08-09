@@ -116,6 +116,32 @@ Claude 会自动识别袋子上的产地、处理法、烘焙度等信息，直�
 
 **CoT 推演是强制步骤，不允许跳过直接套模板。**
 
+## Web Loop（持续迭代闭环）
+
+在 Hermes/CLI 之外新增 `web/` 目录：Fastify 薄后端 + React(Vite) 前端，Mac 本地运行，手机/电脑浏览器局域网访问。
+
+- **闭环**：豆库 → 选豆出配方（走 Hermes）→ 推云 → 手动同步云端"最近使用" → 待反馈 → 30 秒结构化反馈 → 勾选"需要迭代"才让 Hermes 出参数建议 → 确认后原地改云配方并记版本
+- **数据**：`~/.xbloom/*.json` 仍是唯一真源；loop 状态（配方↔豆映射、建议、版本、待反馈）存 `~/.xbloom/loop.db`（node:sqlite，无原生依赖，Docker 友好）
+- **反馈维度**：总体 1-5 星 + 酸/涩/苦 + body + 香气 + 卡粉（按 brewTime vs 预期时长自动预判，可改）；甜感不采集
+- **新鲜度双轨**：烘焙养豆窗口 + 开封衰减（`openedDate` 选填；氮气单独包装豆开封权重低）
+- **首页视觉**：`web/public/media/` 下的 hero 视频/图片来自 xbloom.com 营销页，仅本地个人使用，勿分发
+
+```bash
+cd web && npm install
+npm run build   # 前端产物
+npm start       # http://127.0.0.1:8788（局域网可访问）
+```
+
+新 MCP 工具：`xbloom_list_brew_records`（云端"最近使用"，含每杯时长与重量曲线）。
+
+## 本地门户（两个入口）
+
+```bash
+cd web && npm run portal   # 默认绑 80 端口，直接访问 http://localhost
+```
+
+导航页给出两个入口：**股票看板**（http://localhost:8787，Python/FastAPI）与**咖啡冲泡**（http://localhost:8788），带在线状态灯。默认优先绑 80（敲 `localhost` 即可），无权限时自动回退 3000；用 `PORT=xxxx npm run portal` 换端口；需要管理员强制绑 80 时运行 `sudo ./portal80.sh`。
+
 ---
 
 ## License

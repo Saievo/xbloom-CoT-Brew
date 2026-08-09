@@ -31,6 +31,25 @@ export function registerTools(server: McpServer): void {
   );
 
   server.tool(
+    "xbloom_list_brew_records",
+    "List brew records from the XBloom cloud '最近使用' feed (tuBrewRecordList). One record per actual brew, newest first, with brew time and recipe snapshot. Use to detect completed brews and attach feedback.",
+    {},
+    async () => {
+      const creds = await requireAuth();
+      const page = await api.listBrewRecords(creds, { pageNumber: 1, countPerPage: 100 });
+      if (!page.records.length) {
+        return { content: [{ type: "text", text: "No brew records found." }] };
+      }
+      const lines = [`Found ${page.totalCount} brew records:`];
+      for (const r of page.records) {
+        const when = new Date(r.createTimeStamp).toLocaleString("zh-CN", { hour12: false });
+        lines.push(`  [${when}] ${r.recipeName} — ${r.brewTime}s, recipe ${r.recipeId ?? "?"}${r.brewTime === 0 ? " (未完成/时长缺失)" : ""}`);
+      }
+      return { content: [{ type: "text", text: lines.join("\n") }] };
+    },
+  );
+
+  server.tool(
     "xbloom_create_recipe",
     "Create a coffee recipe and push to XBloom cloud.",
     {
@@ -137,7 +156,7 @@ export function registerTools(server: McpServer): void {
     async () => {
       const prefs = await store.getPreferences();
       if (!prefs) return { content: [{ type: "text", text: "No preferences saved yet." }] };
-      return { content: [{ type: "text", text: JSON.stringify(prefs, null, 2) }] };
+      return { content: [{ type: "text", text: JSON.stringify(store.normalizePreferences(prefs), null, 2) }] };
     },
   );
 
@@ -145,14 +164,16 @@ export function registerTools(server: McpServer): void {
     "xbloom_save_preferences",
     "Save or update taste preferences.",
     {
-      acidity: z.string().describe("Preferred acidity level (e.g. bright, balanced, low)"),
-      sweetness: z.string().describe("Preferred sweetness (e.g. high, medium, subtle)"),
-      body: z.string().describe("Preferred body (e.g. light, medium, full)"),
-      strength: z.string().describe("Preferred strength (e.g. light, medium, strong)"),
-      notes: z.string().describe("Additional preference notes"),
+      sourBitterBias: z.string().describe("Desired direction: sour | balanced | bitter"),
+      strength: z.string().describe("Desired strength: light | medium | strong"),
+      bodyPref: z.string().describe("Desired body: light(清爽) | medium(适中) | heavy(厚重)"),
+      aromaPriority: z.string().describe("How much aroma matters: low | medium | high"),
+      notes: z.string().optional().describe("Additional preference notes"),
     },
     async (args) => {
-      await store.savePreferences({ ...args, updatedAt: new Date().toISOString() });
+      const current = await store.getPreferences();
+      const merged = { ...store.normalizePreferences(current), ...args, updatedAt: new Date().toISOString() };
+      await store.savePreferences(merged);
       return { content: [{ type: "text", text: "Preferences saved." }] };
     },
   );
@@ -177,13 +198,16 @@ export function registerTools(server: McpServer): void {
       origin: z.string(),
       process: z.string().describe("washed, natural, honey, anaerobic, etc."),
       roastLevel: z.string().describe("light, medium-light, medium, medium-dark, dark"),
+      variety: z.string().optional().describe("Coffee variety/cultivar, e.g. 瑰夏, SL28, 铁皮卡"),
+      packageWeightG: z.number().optional().describe("Package weight in grams"),
       altitude: z.string().optional(),
       flavorNotes: z.string().optional(),
       roastDate: z.string().optional(),
+      openedDate: z.string().optional().describe("Date the package was opened (optional; nitrogen-packed beans may skip)"),
       referenceGrind: z.string().optional().describe("Roaster's reference grind, e.g. 'C40 18' or '800um'"),
       brewCount: z.number().int().min(0).optional().describe("Total brews recorded for this bean"),
       lastBrewedAt: z.string().optional().describe("ISO timestamp of the most recent brew"),
-      lastRating: z.number().min(1).max(10).optional().describe("Rating (1-10) of the most recent brew"),
+      lastRating: z.number().min(1).max(5).optional().describe("Rating (1-5) of the most recent brew"),
     },
     async (args) => {
       const beans = await store.getBeans();
@@ -242,6 +266,9 @@ export function registerTools(server: McpServer): void {
       beanName: z.string().optional(),
       recipeName: z.string(),
       recipeId: z.number().int().optional(),
+      source: z.enum(["cloud", "manual"]).optional().describe("Where the record came from"),
+      cloudRecordId: z.number().int().optional().describe("Cloud brew record id (dedupe key)"),
+      version: z.number().int().optional().describe("Recipe version snapshot"),
       brewedAt: z.string().optional().describe("ISO timestamp (only meaningful when creating or overriding)"),
       params: z.object({
         dose_g: z.number(),
@@ -256,8 +283,20 @@ export function registerTools(server: McpServer): void {
           pause_seconds: z.number(),
         })),
       }),
+      taste: z.object({
+        rating: z.number().min(1).max(5).optional(),
+        acidity: z.enum(["weak", "ok", "strong"]).optional(),
+        astringency: z.enum(["weak", "ok", "strong"]).optional(),
+        bitterness: z.enum(["weak", "ok", "strong"]).optional(),
+        body: z.enum(["light", "medium", "heavy"]).optional(),
+        aroma: z.enum(["none", "light", "strong"]).optional(),
+        aromaType: z.string().optional(),
+        stalled: z.boolean().optional().describe("卡粉标记"),
+        note: z.string().optional(),
+        wantIteration: z.boolean().optional().describe("用户是否需要参数迭代建议"),
+      }).optional(),
       feedback: z.string().optional(),
-      rating: z.number().min(1).max(10).optional(),
+      rating: z.number().min(1).max(5).optional().describe("Legacy top-level rating; new entries should use taste.rating"),
     },
     async (args) => {
       const history = await store.getHistory();

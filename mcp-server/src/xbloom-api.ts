@@ -152,6 +152,58 @@ export async function listRecipes(creds: XBloomCreds): Promise<string> {
   return lines.join("\n");
 }
 
+export interface CloudRecipe {
+  tableId: number;
+  name: string;
+  dose: number;
+  ratio: number;
+  grindSize: number;
+  rpm: number;
+  cupType: number;
+  color?: string;
+  shareLink?: string;
+  pourList: Array<{
+    volume: number;
+    temperature: number;
+    flowRate: number;
+    pattern: number;
+    pausing: number;
+    agitateBefore?: boolean;
+    agitateAfter?: boolean;
+  }>;
+}
+
+/** 结构化拉取云端全部配方（用于本地校验/管理，只读）。 */
+export async function listRecipesData(creds: XBloomCreds): Promise<CloudRecipe[]> {
+  const payload = { ...authBase(creds), pageNumber: 1, countPerPage: 100, adaptedModel: 1 };
+  const resp = await postEncrypted("tuMyTeaRecipeCreated.tuhtml", payload);
+  if (resp.result !== "success") {
+    throw new Error(
+      `Failed to list recipes: ${resp.info ?? "unknown error"}. If the session expired, call xbloom_login(email, password) to re-login.`,
+    );
+  }
+  return ((resp.list as Record<string, unknown>[]) ?? []).map((r) => ({
+    tableId: Number(r.tableId),
+    name: String(r.theName ?? "Unknown"),
+    dose: Number(r.dose ?? 0),
+    ratio: Number(r.grandWater ?? 0),
+    grindSize: Number(r.grinderSize ?? 0),
+    rpm: Number(r.rpm ?? 0),
+    cupType: Number(r.cupType ?? 2),
+    color: r.theColor != null ? String(r.theColor) : undefined,
+    shareLink: r.shareRecipeLink != null ? String(r.shareRecipeLink) : undefined,
+    pourList: ((r.pourList as Record<string, unknown>[]) ?? []).map((p) => ({
+      volume: Number(p.volume ?? 0),
+      temperature: Number(p.temperature ?? 0),
+      flowRate: Number(p.flowRate ?? 0),
+      pattern: Number(p.pattern ?? 2),
+      pausing: Number(p.pausing ?? 0),
+      agitateBefore: Number(p.isEnableVibrationBefore) === 1,
+      agitateAfter: Number(p.isEnableVibrationAfter) === 1,
+    })),
+  }));
+}
+
 export async function createRecipe(
   creds: XBloomCreds,
   args: { name: string; dose_g: number; ratio: number; grind_size: number; grind_rpm: number; pours: Pour[]; color?: string },
@@ -277,11 +329,12 @@ export async function editRecipe(
     isShortcuts: current.isShortcuts ?? 2,
   };
 
+  let finalPours: Array<Record<string, unknown>>;
   if (args.pours) {
-    payload.pourDataJSONStr = JSON.stringify(buildPourList(args.pours));
+    finalPours = buildPourList(args.pours);
   } else {
     const existing = (current.pourList as Record<string, unknown>[]) || [];
-    payload.pourDataJSONStr = JSON.stringify(existing.map(p => ({
+    finalPours = existing.map(p => ({
       theName: p.theName,
       volume: Number(p.volume ?? 30),
       temperature: Number(p.temperature ?? 93),
@@ -290,8 +343,15 @@ export async function editRecipe(
       pausing: Number(p.pausing ?? 0),
       isEnableVibrationBefore: Number(p.isEnableVibrationBefore ?? 2),
       isEnableVibrationAfter: Number(p.isEnableVibrationAfter ?? 2),
-    })));
+    }));
   }
+  // 云端要求注水总量 = 粉量 × 比例；不匹配会被判为"注水数据异常"。
+  const targetVolume = Math.round(Number(args.dose_g ?? current.dose) * Number(args.ratio ?? current.grandWater));
+  const actualVolume = finalPours.reduce((s, p) => s + Number(p.volume ?? 0), 0);
+  if (actualVolume !== targetVolume && finalPours.length > 0) {
+    finalPours[finalPours.length - 1].volume = Math.max(0, Number(finalPours[finalPours.length - 1].volume ?? 0) + (targetVolume - actualVolume));
+  }
+  payload.pourDataJSONStr = JSON.stringify(finalPours);
 
   const resp = await postEncrypted("tuRecipeUpdate.tuhtml", payload);
   if (resp.result !== "success") {
@@ -343,4 +403,90 @@ export async function fetchRecipe(shareUrl: string): Promise<string> {
       agitate_after: p.isEnableVibrationAfter === 1,
     })),
   }, null, 2);
+}
+
+// --- Brew records (最近使用 / tuBrewRecordList) ---
+
+export interface XBloomBrewRecord {
+  /** Cloud record id = the item's own tableId — unique per brew, used for dedupe. */
+  recordId: number;
+  /** memberUsedRecipesId — "recipe usage group" id, shared across brews of the same recipe. */
+  usageId: number | null;
+  /** Total brew time in seconds. 0 may mean a cancelled/unfinished brew. */
+  brewTime: number;
+  /** Epoch milliseconds of the brew. */
+  createTimeStamp: number;
+  recipeName: string;
+  /** Recipe tableId parsed from the embedded desired JSON, if any. */
+  recipeId: number | null;
+  /** Full recipe snapshot from the cloud (dose/ratio/grind/pours). */
+  desired: Record<string, unknown> | null;
+  /** Raw brewing_method JSON string (per-pour params). */
+  brewingMethod: string | null;
+  /** Raw lineChartData JSON string: [[t_s, weight_g], ...] water/coffee curve. */
+  lineChartData: string | null;
+  resultState: number | null;
+  machineId: number | null;
+  groupName?: string;
+}
+
+export interface BrewRecordPage {
+  totalCount: number;
+  totalPage: number;
+  records: XBloomBrewRecord[];
+}
+
+export async function listBrewRecords(
+  creds: XBloomCreds,
+  opts?: { pageNumber?: number; countPerPage?: number },
+): Promise<BrewRecordPage> {
+  const payload = {
+    ...authBase(creds),
+    pageNumber: opts?.pageNumber ?? 1,
+    countPerPage: opts?.countPerPage ?? 100,
+  };
+  const resp = await postEncrypted("tuBrewRecordList.tuhtml", payload);
+  if (resp.result !== "success") {
+    throw new Error(
+      `Failed to list brew records: ${resp.info ?? "unknown error"}. If the session expired, call xbloom_login(email, password) to re-login.`,
+    );
+  }
+  const groups = (resp.gList as Array<{ groupName?: string; list?: unknown[] }>) ?? [];
+  const records: XBloomBrewRecord[] = [];
+  for (const group of groups) {
+    for (const raw of group.list ?? []) {
+      const r = raw as Record<string, unknown>;
+      let desired: Record<string, unknown> | null = null;
+      if (typeof r.desired === "string") {
+        try { desired = JSON.parse(r.desired) as Record<string, unknown>; } catch { desired = null; }
+      } else if (r.desired && typeof r.desired === "object") {
+        desired = r.desired as Record<string, unknown>;
+      }
+      records.push({
+        recordId: Number(r.tableId ?? r.memberUsedRecipesId ?? 0),
+        usageId: r.memberUsedRecipesId != null ? Number(r.memberUsedRecipesId) : null,
+        brewTime: Number(r.brewTime ?? 0),
+        createTimeStamp: Number(r.createTimeStamp ?? Date.now()),
+        recipeName: String(r.recipeName ?? "Unknown"),
+        recipeId: desired?.tableId != null ? Number(desired.tableId) : null,
+        desired,
+        brewingMethod:
+          typeof r.brewing_method === "string"
+            ? r.brewing_method
+            : r.brewing_method
+              ? JSON.stringify(r.brewing_method)
+              : null,
+        lineChartData:
+          typeof r.lineChartData === "string"
+            ? r.lineChartData
+            : r.lineChartData
+              ? JSON.stringify(r.lineChartData)
+              : null,
+        resultState: r.resultState != null ? Number(r.resultState) : null,
+        machineId: r.machineId != null ? Number(r.machineId) : null,
+        groupName: group.groupName,
+      });
+    }
+  }
+  return { totalCount: Number(resp.totalCount ?? 0), totalPage: Number(resp.totalPage ?? 1), records };
 }
