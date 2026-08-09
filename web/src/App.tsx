@@ -752,6 +752,7 @@ function RecipeChatPanel({
   const esRef = useRef<EventSource | null>(null);
   const streamIdRef = useRef<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const initialScrollDone = useRef(false);
 
   const load = useCallback(async () => {
     const data = await get<{ recipeName: string | null; messages: ChatMessage[]; pendingAdjust: ChatAdjust | null }>(`/api/chat/${recipeId}`);
@@ -766,6 +767,12 @@ function RecipeChatPanel({
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
+    if (!initialScrollDone.current) {
+      if (messages.length === 0 && !streamText && !streamThought) return;
+      el.scrollTop = el.scrollHeight;
+      initialScrollDone.current = true;
+      return;
+    }
     const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
     if (nearBottom) el.scrollTop = el.scrollHeight;
   }, [messages, streamText, streamThought]);

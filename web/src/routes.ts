@@ -611,8 +611,12 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     let promptParams: store.HistoryEntry["params"] | null = null;
 
     if (recipeId === 0) {
-      // 全局对话：直接用原始消息，不绑定配方
-      prompt = message.trim();
+      // 全局对话：注入对话历史，让模型延续上下文（不绑定配方）
+      const historyLines = messages
+        .slice(0, -1)
+        .map((m) => `${m.role === "user" ? "用户" : "AI"}：${m.text}`)
+        .join("\n");
+      prompt = `你是这个项目（XBLOOM loop）的助手。请延续对话，自然回答，不要调用工具。\n\n对话历史：\n${historyLines || "（无）"}\n\n用户最新提问：${message.trim()}`;
     } else {
       const creds = await store.getConfig();
       if (!creds) throw new Error("Not logged in");
@@ -632,7 +636,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         recipeName,
         bean,
         params: promptParams,
-        messages: messages.map((m) => ({ role: m.role, text: m.text })),
+        messages: messages.slice(0, -1).map((m) => ({ role: m.role, text: m.text })),
         userMessage: message.trim(),
       });
     }
