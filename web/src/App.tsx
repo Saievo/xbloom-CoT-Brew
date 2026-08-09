@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import { get, post, del, pollJob } from "./api.js";
 
 // ---------- types ----------
@@ -725,7 +728,17 @@ function latestThoughtLine(thought: string): string {
   return last.length > 80 ? `…${last.slice(-80)}` : last;
 }
 
-function RecipeChatPanel({ recipeId, recipeName, onApplied }: { recipeId: number; recipeName: string; onApplied?: () => void }) {
+function RecipeChatPanel({
+  recipeId,
+  recipeName,
+  onApplied,
+  global = false,
+}: {
+  recipeId: number;
+  recipeName: string;
+  onApplied?: () => void;
+  global?: boolean;
+}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [pending, setPending] = useState<ChatAdjust | null>(null);
   const [busy, setBusy] = useState(false);
@@ -759,14 +772,14 @@ function RecipeChatPanel({ recipeId, recipeName, onApplied }: { recipeId: number
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (pending) {
+      if (!global && pending) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [pending]);
+  }, [pending, global]);
 
   const send = async () => {
     const msg = input.trim();
@@ -897,8 +910,14 @@ function RecipeChatPanel({ recipeId, recipeName, onApplied }: { recipeId: number
                   </button>
                 </div>
               )}
-              <div className="chat-bubble">{m.text}</div>
-              {m.adjust && !isCurrentPending && (
+              <div className="chat-bubble">
+                {m.role === "ai" ? (
+                  <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{m.text}</ReactMarkdown>
+                ) : (
+                  m.text
+                )}
+              </div>
+              {!global && m.adjust && !isCurrentPending && (
                 <div className="chat-adjust">
                   <div className="muted">AI 参数调整方案：{m.adjust.summary}</div>
                   <div className="delta-list">
@@ -925,11 +944,17 @@ function RecipeChatPanel({ recipeId, recipeName, onApplied }: { recipeId: number
                 </div>
               </>
             )}
-            <div className="chat-bubble">{streamText || "思考中…"}</div>
+            <div className="chat-bubble">
+              {streamText ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{streamText}</ReactMarkdown>
+              ) : (
+                "思考中…"
+              )}
+            </div>
           </div>
         )}
       </div>
-      {pending && (
+      {!global && pending && (
         <div className="chat-adjust">
           <div className="muted">AI 给出了参数调整方案：{pending.summary}</div>
           <div className="delta-list">
@@ -955,7 +980,7 @@ function RecipeChatPanel({ recipeId, recipeName, onApplied }: { recipeId: number
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) send();
           }}
-          placeholder="问这个配方的问题…"
+          placeholder={global ? "聊聊咖啡、豆子、配方、冲煮…（全局）" : "问这个配方的问题…"}
           disabled={busy}
         />
         {busy ? (
@@ -2216,47 +2241,11 @@ function FeedbackForm({ entry, beans, onDone }: { entry: HistoryEntry; beans: Be
 // ---------- chat ----------
 
 function ChatPage() {
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [reply, setReply] = useState("");
-  const [error, setError] = useState("");
-
-  const send = async () => {
-    if (!message.trim()) return;
-    setBusy(true);
-    setError("");
-    setReply("");
-    try {
-      const { jobId } = await post<{ jobId: string }>("/api/chat", { message });
-      pollJob<string>(
-        jobId,
-        (r) => {
-          setReply(r);
-          setBusy(false);
-        },
-        (err) => {
-          setError(err);
-          setBusy(false);
-        },
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setBusy(false);
-    }
-  };
-
   return (
     <div className="page">
-      <h2>对话（接 Hermes）</h2>
+      <h2>全局对话</h2>
       <div className="card">
-        <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="问任何关于豆子、配方、冲煮的问题…" />
-        <div className="row">
-          <button className="primary" disabled={busy || !message.trim()} onClick={send}>
-            {busy ? "思考中…" : "发送"}
-          </button>
-        </div>
-        {error && <p className="error">{error}</p>}
-        {reply && <pre className="reply">{reply}</pre>}
+        <RecipeChatPanel recipeId={0} recipeName="全局对话" global />
       </div>
     </div>
   );

@@ -600,25 +600,42 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     const recipeId = Number((req.params as { recipeId: string }).recipeId);
     const { message } = (req.body ?? {}) as { message?: string };
     if (!message?.trim()) throw new Error("消息不能为空");
-    const creds = await store.getConfig();
-    if (!creds) throw new Error("Not logged in");
-
-    const cloudRecipes = await api.listRecipesData(creds);
-    const cloud = cloudRecipes.find((r) => r.tableId === recipeId) ?? null;
-    const history = await store.getHistory();
-    const lastEntry = history.filter((h) => h.recipeId === recipeId).sort((a, b) => (a.brewedAt < b.brewedAt ? 1 : -1))[0];
-    const params = cloud ? cloudToParams(cloud) : (lastEntry?.params ?? null);
-    const recipeName = cloud?.name ?? lastEntry?.recipeName ?? `配方 ${recipeId}`;
-    const beans = await store.getBeans();
-    let beanId: string | null = null;
-    const mapping = getRecipeBeanMapping(recipeId);
-    if (mapping?.bean_id) beanId = mapping.bean_id;
-    else if (lastEntry?.beanId) beanId = lastEntry.beanId;
-    const bean = beanId ? (beans.find((b) => b.id === beanId) ?? null) : null;
 
     const chat = getRecipeChat(recipeId);
     const messages = [...(chat?.messages ?? [])];
     messages.push({ role: "user", text: message.trim(), ts: new Date().toISOString() });
+
+    let beanId: string | null = null;
+    let recipeName = "全局对话";
+    let prompt: string;
+    let promptParams: store.HistoryEntry["params"] | null = null;
+
+    if (recipeId === 0) {
+      // 全局对话：直接用原始消息，不绑定配方
+      prompt = message.trim();
+    } else {
+      const creds = await store.getConfig();
+      if (!creds) throw new Error("Not logged in");
+      const cloudRecipes = await api.listRecipesData(creds);
+      const cloud = cloudRecipes.find((r) => r.tableId === recipeId) ?? null;
+      const history = await store.getHistory();
+      const lastEntry = history.filter((h) => h.recipeId === recipeId).sort((a, b) => (a.brewedAt < b.brewedAt ? 1 : -1))[0];
+      promptParams = cloud ? cloudToParams(cloud) : (lastEntry?.params ?? null);
+      recipeName = cloud?.name ?? lastEntry?.recipeName ?? `配方 ${recipeId}`;
+      const beans = await store.getBeans();
+      const mapping = getRecipeBeanMapping(recipeId);
+      if (mapping?.bean_id) beanId = mapping.bean_id;
+      else if (lastEntry?.beanId) beanId = lastEntry.beanId;
+      const bean = beanId ? (beans.find((b) => b.id === beanId) ?? null) : null;
+      prompt = buildRecipeChatPrompt({
+        recipeId,
+        recipeName,
+        bean,
+        params: promptParams,
+        messages: messages.map((m) => ({ role: m.role, text: m.text })),
+        userMessage: message.trim(),
+      });
+    }
     upsertRecipeChat(recipeId, beanId, recipeName, messages, chat?.pending_adjust ?? null);
 
     const streamId = randomUUID();
@@ -626,19 +643,11 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     const controller = new AbortController();
     chatStreams.get(streamId)!.cancel = () => controller.abort();
     let cancelled = false;
-    const promptOpts = {
-      recipeId,
-      recipeName,
-      bean,
-      params,
-      messages: messages.map((m) => ({ role: m.role, text: m.text })),
-      userMessage: message.trim(),
-    };
     void (async () => {
       let full = "";
       let thought = "";
       try {
-        await streamRecipeChat(buildRecipeChatPrompt(promptOpts), {
+        await streamRecipeChat(prompt, {
           onDelta: (t) => {
             full += t;
             pushChatStream(streamId, "delta", t);
@@ -651,7 +660,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
             if (cancelled) return;
             full = text && text !== "（空回复）" ? text : full;
             void thoughtText;
-            await finalizeChatAiReply(recipeId, full, null, promptOpts.params);
+            await finalizeChatAiReply(recipeId, full, null, promptParams);
             pushChatStream(streamId, "done", full);
             markChatStreamDone(streamId);
           },
@@ -662,7 +671,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
           },
           onError: async (err) => {
             if (cancelled) return;
-            await finalizeChatAiReply(recipeId, "", err, promptOpts.params);
+            await finalizeChatAiReply(recipeId, "", err, promptParams);
             pushChatStream(streamId, "error", err);
             markChatStreamDone(streamId);
           },
@@ -670,7 +679,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       } catch (e) {
         if (cancelled) return;
         const err = e instanceof Error ? e.message : String(e);
-        await finalizeChatAiReply(recipeId, "", err, promptOpts.params);
+        await finalizeChatAiReply(recipeId, "", err, promptParams);
         pushChatStream(streamId, "error", err);
         markChatStreamDone(streamId);
       }

@@ -506,6 +506,66 @@ button.active {
   border-bottom-left-radius: 4px;
 }
 
+.chat-bubble > :first-child {
+  margin-top: 0;
+}
+
+.chat-bubble > :last-child {
+  margin-bottom: 0;
+}
+
+.chat-bubble p,
+.chat-bubble ul,
+.chat-bubble ol {
+  margin: 6px 0;
+}
+
+.chat-bubble ul,
+.chat-bubble ol {
+  padding-left: 18px;
+}
+
+.chat-bubble h1,
+.chat-bubble h2,
+.chat-bubble h3,
+.chat-bubble h4 {
+  margin: 8px 0 4px;
+  font-size: 14px;
+}
+
+.chat-bubble code {
+  background: rgba(152, 144, 127, 0.16);
+  padding: 1px 5px;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.chat-bubble pre {
+  background: #14120e;
+  border: 1px solid var(--line);
+  padding: 8px 10px;
+  border-radius: 8px;
+  overflow: auto;
+  margin: 6px 0;
+}
+
+.chat-bubble pre code {
+  background: none;
+  padding: 0;
+}
+
+.chat-bubble table {
+  border-collapse: collapse;
+  margin: 6px 0;
+  font-size: 12px;
+}
+
+.chat-bubble th,
+.chat-bubble td {
+  border: 1px solid var(--line);
+  padding: 4px 8px;
+}
+
 .chat-adjust {
   border: 1px solid rgba(201, 162, 94, 0.4);
   background: rgba(201, 162, 94, 0.08);
@@ -788,6 +848,17 @@ pre {
   background: var(--card);
   border: 1px solid var(--line);
   color: var(--ink);
+  padding: 12px 14px;
+  line-height: 1.6;
+  white-space: normal;
+}
+
+.reply p {
+  margin: 6px 0;
+}
+
+.reply pre {
+  white-space: pre-wrap;
 }
 
 .ok {
