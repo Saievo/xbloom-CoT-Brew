@@ -142,6 +142,17 @@ cd web && npm run portal   # 默认绑 80 端口，直接访问 http://localhost
 
 导航页给出两个入口：**股票看板**（http://localhost:8787，Python/FastAPI）与**咖啡冲泡**（http://localhost:8788），带在线状态灯。默认优先绑 80（敲 `localhost` 即可），无权限时自动回退 3000；用 `PORT=xxxx npm run portal` 换端口；需要管理员强制绑 80 时运行 `sudo ./portal80.sh`。
 
+## 一键启动 / 停止
+
+```bash
+./up.sh        # 拉起咖啡(8788) + 股票看板(8787) + 门户(localhost)，并自动打开浏览器
+./down.sh      # 全部停止
+```
+
+Mac 上也可以直接**双击 `一键启动.command`**，无需开终端敲命令；服务用 nohup 后台运行，关掉终端窗口也不会停。日志统一在 `~/.xbloom/*.log`。
+
+> 股票看板目录默认 `/Users/edward/stock/stock_web`，可用环境变量 `STOCK_WEB_DIR` 覆盖；目录不存在时自动跳过。
+
 ---
 
 ## License
