@@ -16,6 +16,7 @@ const HOST = process.env.HOST ?? "0.0.0.0";
 const WEB_DIR = path.dirname(fileURLToPath(import.meta.url));
 const STOCK_DIR = process.env.STOCK_WEB_DIR ?? "/Users/edward/stock/stock_web";
 const LOG_DIR = path.join(os.homedir(), ".xbloom");
+const PORTAL_FAVICON = fs.readFileSync(path.join(WEB_DIR, "public", "portal-favicon.svg"));
 
 const STOCK_URL = "http://127.0.0.1:8787";
 const COFFEE_URL = "http://127.0.0.1:8788";
@@ -42,6 +43,7 @@ const PAGE = `<!doctype html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <title>本地工具导航</title>
   <style>
     :root { color-scheme: dark; }
@@ -280,6 +282,11 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === "/api/health") {
     const [stock, coffee] = await Promise.all([probe(STOCK_URL + "/"), probe(COFFEE_URL + "/api/status")]);
     json(res, 200, { stock, coffee });
+    return;
+  }
+  if (url.pathname === "/favicon.svg") {
+    res.writeHead(200, { "Content-Type": "image/svg+xml", "Cache-Control": "no-store" });
+    res.end(PORTAL_FAVICON);
     return;
   }
   if (url.pathname.startsWith("/api/start/")) {
