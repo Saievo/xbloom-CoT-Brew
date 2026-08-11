@@ -1,9 +1,9 @@
 // 本地门户：优先绑 80 端口（直接敲 localhost 即可），没权限自动回退 3000。
 // 零依赖，纯 Node 内置 http。端口可用环境变量 PORT 覆盖。
-// 提供一键启动：页面上的「启动」按钮通过 /api/start/:svc 拉起离线服务
-// （detached 子进程，独立会话，门户退出后服务也继续跑）。
+// 提供一键启动/停止：页面按钮通过 /api/start/:svc 与 /api/stop/:svc 控制服务
+// （启动用 detached 子进程，独立会话，门户退出后服务也继续跑）。
 import http from "node:http";
-import { spawn } from "node:child_process";
+import { spawn, execFile, execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -103,12 +103,14 @@ const PAGE = `<!doctype html>
     .mini:disabled { opacity: .55; cursor: default; }
     .mini.go { border-color: #2f6b4c; background: #1f3b2e; color: #7ee2ab; }
     .mini.go:hover:not(:disabled) { background: #27503c; }
+    .mini.stop { border-color: #6b3b3b; background: #3b1f1f; color: #e28a8a; }
+    .mini.stop:hover:not(:disabled) { background: #503030; }
   </style>
 </head>
 <body>
   <div>
     <h1>本地工具导航</h1>
-    <div class="sub">两个入口，状态每 5 秒自动刷新；离线时点「启动」一键拉起</div>
+    <div class="sub">两个入口，状态每 5 秒自动刷新；离线可「启动」，在线可「停止」</div>
   </div>
   <div class="cards">
     <div class="card">
@@ -120,7 +122,8 @@ const PAGE = `<!doctype html>
         <div class="url">localhost:8787</div>
       </a>
       <div class="card-ctrl">
-        <button id="btn-stock" class="mini go" data-svc="stock" onclick="ctrl('stock', this)">启动</button>
+        <button id="btn-stock" class="mini go" data-svc="stock" onclick="ctrl('stock', 'start', this)">启动</button>
+        <button id="stop-stock" class="mini stop" data-svc="stock" onclick="ctrl('stock', 'stop', this)">停止</button>
         <span class="url" id="hint-stock"></span>
       </div>
     </div>
@@ -133,7 +136,8 @@ const PAGE = `<!doctype html>
         <div class="url">localhost:8788</div>
       </a>
       <div class="card-ctrl">
-        <button id="btn-coffee" class="mini go" data-svc="coffee" onclick="ctrl('coffee', this)">启动</button>
+        <button id="btn-coffee" class="mini go" data-svc="coffee" onclick="ctrl('coffee', 'start', this)">启动</button>
+        <button id="stop-coffee" class="mini stop" data-svc="coffee" onclick="ctrl('coffee', 'stop', this)">停止</button>
         <span class="url" id="hint-coffee"></span>
       </div>
     </div>
@@ -153,45 +157,53 @@ const PAGE = `<!doctype html>
     function set(k, ok) {
       const dot = document.getElementById("dot-" + k);
       const txt = document.getElementById("txt-" + k);
-      const btn = document.getElementById("btn-" + k);
+      const start = document.getElementById("btn-" + k);
+      const stop = document.getElementById("stop-" + k);
       const hint = document.getElementById("hint-" + k);
       dot.className = "dot " + (ok ? "ok" : "down");
       txt.textContent = ok ? "在线" : "离线";
       if (ok) {
-        btn.disabled = true;
-        btn.textContent = "运行中";
-        btn.classList.remove("go");
+        start.disabled = true;
+        start.textContent = "运行中";
+        start.classList.remove("go");
+        if (stop.dataset.busy !== "1") { stop.disabled = false; stop.textContent = "停止"; }
         if (hint) hint.textContent = "";
-      } else if (btn.dataset.busy !== "1") {
-        btn.disabled = false;
-        btn.textContent = "启动";
-        btn.classList.add("go");
+      } else {
+        if (start.dataset.busy !== "1") {
+          start.disabled = false;
+          start.textContent = "启动";
+          start.classList.add("go");
+        }
+        stop.disabled = true;
+        stop.textContent = "停止";
         if (hint) hint.textContent = "";
       }
     }
-    async function ctrl(svc, btn) {
+    async function ctrl(svc, action, btn) {
       if (btn.dataset.busy === "1") return;
       btn.dataset.busy = "1";
       btn.disabled = true;
-      btn.textContent = "启动中…";
+      btn.textContent = action === "start" ? "启动中…" : "停止中…";
       const hint = document.getElementById("hint-" + svc);
       try {
-        const r = await fetch("/api/start/" + svc, { method: "POST" });
+        const r = await fetch("/api/" + action + "/" + svc, { method: "POST" });
         const j = await r.json().catch(() => ({}));
-        if (!r.ok || !j.ok) throw new Error(j.error || "启动失败");
+        if (!r.ok || !j.ok) throw new Error(j.error || (action === "start" ? "启动失败" : "停止失败"));
+        const target = action === "start" ? "ok" : "down";
         for (let i = 0; i < 30; i++) {
           await new Promise((res) => setTimeout(res, 1000));
           await tick();
           const dot = document.getElementById("dot-" + svc);
-          if (dot && dot.className === "dot ok") break;
+          if (dot && dot.className === "dot " + target) break;
         }
         const ok = document.getElementById("dot-" + svc).className === "dot ok";
-        if (!ok && hint) hint.textContent = "启动中，请稍候…";
+        if (action === "start" && !ok && hint) hint.textContent = "启动中，请稍候…";
+        if (action === "stop" && ok && hint) hint.textContent = "服务仍在运行，请重试";
       } catch (e) {
         if (hint) hint.textContent = e.message;
       } finally {
         delete btn.dataset.busy;
-        set(svc, document.getElementById("dot-" + svc).className === "dot ok");
+        tick();
       }
     }
     tick();
@@ -232,6 +244,37 @@ function startService(svc) {
   return { ok: true };
 }
 
+const SERVICE_PORTS = { coffee: 8788, stock: 8787 };
+
+function stopService(svc) {
+  const s = SERVICES[svc];
+  if (!s) return Promise.resolve({ ok: false, error: "未知服务: " + svc });
+  const port = SERVICE_PORTS[svc];
+  return new Promise((resolve) => {
+    execFile("lsof", ["-tiTCP:" + port, "-sTCP:LISTEN"], (err, stdout) => {
+      if (err) return resolve({ ok: true, status: "not-running" });
+      const pids = stdout.trim().split(/\s+/).filter(Boolean);
+      const killed = [];
+      for (const pid of pids) {
+        let comm = "";
+        try {
+          comm = execFileSync("ps", ["-p", pid, "-o", "comm="]).toString().trim();
+        } catch {
+          continue;
+        }
+        if (!/^(node|Node|Python|python3)$/.test(comm)) continue;
+        try {
+          process.kill(Number(pid), "SIGTERM");
+          killed.push(pid);
+        } catch {
+          // 已退出或没有权限，忽略
+        }
+      }
+      resolve({ ok: true, status: killed.length ? "stopped" : "not-running", pids: killed });
+    });
+  });
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
   if (url.pathname === "/api/health") {
@@ -247,6 +290,13 @@ const server = http.createServer(async (req, res) => {
     const r = startService(svc);
     if (!r.ok) return json(res, 400, r);
     return json(res, 200, { ok: true, status: "started" });
+  }
+  if (url.pathname.startsWith("/api/stop/")) {
+    if (req.method !== "POST") return json(res, 405, { ok: false, error: "需要 POST" });
+    const svc = url.pathname.slice("/api/stop/".length);
+    if (!(svc in SERVICES)) return json(res, 404, { ok: false, error: "未知服务: " + svc });
+    const r = await stopService(svc);
+    return json(res, 200, r);
   }
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
   res.end(PAGE);
