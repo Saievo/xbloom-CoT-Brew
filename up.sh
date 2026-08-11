@@ -13,6 +13,20 @@ mkdir -p "$LOG_DIR"
 is_up() { curl -fsS -m 2 "$1" >/dev/null 2>&1; }
 is_portal() { curl -fsS -m 2 "$1" 2>/dev/null | grep -q "本地工具导航"; }
 
+# 以独立会话后台启动（macOS 没有 setsid 命令，用 python 实现），
+# 即使启动它的终端/脚本被关闭或回收，服务也继续存活。
+detach() { # detach <workdir> <logfile> <cmd...>
+  local dir="$1" log="$2"; shift 2
+  (cd "$dir" && env -u PORT -u STOCK_WEB_PORT nohup python3 -c '
+import os, sys
+try:
+    os.setsid()
+except OSError:
+    pass
+os.execvp(sys.argv[1], sys.argv[1:])
+' "$@" >"$log" 2>&1 &)
+}
+
 wait_until() { # wait_until <url> <port>
   local url="$1" label="$2" i
   for i in $(seq 1 30); do
@@ -30,7 +44,7 @@ if is_up "http://127.0.0.1:8788/"; then
   echo "☕ 咖啡冲泡已在运行  http://localhost:8788"
 else
   echo "☕ 启动咖啡冲泡 ..."
-  (cd "$ROOT/web" && nohup npm start >"$LOG_DIR/web.log" 2>&1 &)
+  detach "$ROOT/web" "$LOG_DIR/web.log" npm start
   wait_until "http://127.0.0.1:8788/" "咖啡冲泡(8788)"
 fi
 
@@ -40,7 +54,7 @@ if [ -d "$STOCK_DIR" ]; then
     echo "📈 股票看板已在运行  http://localhost:8787"
   else
     echo "📈 启动股票看板 ..."
-    (cd "$STOCK_DIR" && nohup python3 server.py >"$LOG_DIR/stock-web.log" 2>&1 &)
+    detach "$STOCK_DIR" "$LOG_DIR/stock-web.log" python3 server.py
     wait_until "http://127.0.0.1:8787/" "股票看板(8787)"
   fi
 else
@@ -55,7 +69,7 @@ if [ -z "$PORTAL_PORT" ]; then
 fi
 if [ -z "$PORTAL_PORT" ]; then
   echo "🌐 启动门户 ..."
-  (cd "$ROOT/web" && nohup node portal.mjs >"$LOG_DIR/portal.log" 2>&1 &)
+  detach "$ROOT/web" "$LOG_DIR/portal.log" node portal.mjs
   for i in $(seq 1 15); do
     is_portal "http://127.0.0.1:80/" && { PORTAL_PORT=80; break; }
     is_portal "http://127.0.0.1:3000/" && { PORTAL_PORT=3000; break; }
